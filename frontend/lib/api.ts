@@ -112,6 +112,8 @@ export const api = {
     fd.append("file", file);
     return request<Document>("/documents/upload", { method: "POST", body: fd }, true);
   },
+  demoSample: (sampleType = "certificate") =>
+    request<Document>(`/documents/demo-sample?sample_type=${encodeURIComponent(sampleType)}`, { method: "POST" }),
   listDocuments: () => request<Document[]>("/documents"),
   getDocument: (id: string) => request<Document>(`/documents/${id}`),
   process: (id: string) =>

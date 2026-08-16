@@ -88,6 +88,63 @@ def upload_document(
         demo=True
     )
 
+@router.post("/demo-sample", response_model=DocumentOut, status_code=201)
+def create_demo_sample(
+    sample_type: str = Query("certificate"),
+    payload: dict = Depends(get_current_user_payload),
+    db: Session = Depends(get_db)
+):
+    owner_id = payload.get("sub")
+    doc_id = str(uuid.uuid4())
+    subfolder = os.path.join(settings.UPLOAD_DIR, doc_id)
+    os.makedirs(subfolder, exist_ok=True)
+    saved_path = os.path.join(subfolder, f"{doc_id}.png")
+
+    # Generate synthetic page image
+    generate_synthetic_page(doc_id, 1, f"Sample_{sample_type.title()}.png")
+    page_1_path = os.path.join(settings.STORAGE_DIR, doc_id, "page_1.png")
+    if os.path.exists(page_1_path):
+        shutil.copyfile(page_1_path, saved_path)
+    else:
+        with open(saved_path, "wb") as f:
+            f.write(b"SAMPLE")
+
+    size_bytes = os.path.getsize(saved_path) if os.path.exists(saved_path) else 1024
+    sha = compute_sha256(saved_path)
+
+    doc = Document(
+        id=doc_id,
+        owner_id=owner_id,
+        original_name=f"Demo_{sample_type.title()}.png",
+        mime_type="image/png",
+        size_bytes=size_bytes,
+        page_count=1,
+        quality_score=92.0,
+        status="uploaded",
+        sha256_hash=sha,
+        storage_path=saved_path
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+
+    log_audit(db, "upload_sample", user_id=owner_id, document_id=doc_id, detail=f"Created demo sample {sample_type}")
+
+    return DocumentOut(
+        id=doc.id,
+        original_name=doc.original_name,
+        mime_type=doc.mime_type,
+        size_bytes=doc.size_bytes,
+        page_count=doc.page_count,
+        quality_score=doc.quality_score,
+        status=doc.status,
+        sha256_hash=doc.sha256_hash,
+        tamper_risk=doc.tamper_risk,
+        analysis=None,
+        created_at=doc.created_at.isoformat(),
+        demo=True
+    )
+
 @router.get("", response_model=List[DocumentOut])
 def list_documents(
     payload: dict = Depends(get_current_user_payload),

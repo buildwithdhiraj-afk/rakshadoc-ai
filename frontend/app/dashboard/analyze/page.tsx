@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { AlertCircle, FileText, Loader2, UploadCloud } from "lucide-react";
+import { AlertCircle, FileText, Sparkles, Loader2, UploadCloud } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,8 +20,16 @@ const ACCEPTED_TYPES = [
 ];
 const MAX_SIZE_MB = 25;
 
+const SAMPLE_OPTIONS = [
+  { type: "certificate", label: "Demo Certificate", desc: "Has signature & stamp" },
+  { type: "bank_form", label: "Demo Bank Form", desc: "Has tables & form fields" },
+  { type: "government_letter", label: "Demo Government Notice", desc: "Has Devanagari text" },
+  { type: "invoice", label: "Demo Invoice", desc: "Has itemized layout" },
+];
+
 export default function AnalyzePage() {
   const [file, setFile] = useState<File | null>(null);
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [documentId, setDocumentId] = useState<string | null>(null);
@@ -47,9 +55,32 @@ export default function AnalyzePage() {
       return;
     }
     setFile(f);
+
+    if (f.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => setPreviewDataUrl(e.target?.result as string);
+      reader.readAsDataURL(f);
+    } else {
+      setPreviewDataUrl(null);
+    }
+
     setUploading(true);
     try {
       const doc = await api.upload(f);
+      await api.process(doc.id);
+      setDocumentId(doc.id);
+      setDocumentName(doc.original_name);
+    } catch (err) {
+      setError(err);
+      setUploading(false);
+    }
+  }
+
+  async function handleSample(sampleType: string) {
+    setError(null);
+    setUploading(true);
+    try {
+      const doc = await api.demoSample(sampleType);
       await api.process(doc.id);
       setDocumentId(doc.id);
       setDocumentName(doc.original_name);
@@ -76,6 +107,32 @@ export default function AnalyzePage() {
         </p>
       </div>
 
+      {/* 1-Click Sample Selector */}
+      <Card className="border-saffron/30 bg-accent/40">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-accent-foreground">
+            <Sparkles className="h-4 w-4 text-saffron" />
+            <span>Try with a Demo Sample Document (1-Click)</span>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Test all platform features instantly without needing to upload your own file.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {SAMPLE_OPTIONS.map((opt) => (
+              <button
+                key={opt.type}
+                disabled={uploading}
+                onClick={() => handleSample(opt.type)}
+                className="flex flex-col items-start rounded-lg border bg-card p-3 text-left transition-all hover:border-saffron hover:shadow-sm disabled:opacity-50"
+              >
+                <span className="text-xs font-semibold text-foreground">{opt.label}</span>
+                <span className="mt-0.5 text-[10px] text-muted-foreground">{opt.desc}</span>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {error ? <ErrorState error={error} title="Upload failed" onRetry={() => setError(null)} /> : null}
 
       {documentId ? (
@@ -83,7 +140,7 @@ export default function AnalyzePage() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Upload Document</CardTitle>
+            <CardTitle className="text-base">Upload Custom Document</CardTitle>
             <CardDescription>
               Your original file is never overwritten. Analysis runs on a protected copy.
             </CardDescription>
@@ -118,7 +175,7 @@ export default function AnalyzePage() {
               onDragLeave={() => setDragging(false)}
               onDrop={onDrop}
               className={cn(
-                "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-14 text-center transition-colors",
+                "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors",
                 dragging
                   ? "border-primary bg-primary/5"
                   : "border-border bg-muted/30 hover:border-primary/50 hover:bg-muted/50",
@@ -126,13 +183,19 @@ export default function AnalyzePage() {
             >
               {uploading ? (
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              ) : previewDataUrl ? (
+                <img
+                  src={previewDataUrl}
+                  alt="Document thumbnail preview"
+                  className="h-24 max-w-full rounded-md object-contain shadow-sm"
+                />
               ) : (
                 <UploadCloud className="h-8 w-8 text-primary" />
               )}
               <div>
                 <p className="text-sm font-semibold text-foreground">
                   {uploading
-                    ? "Uploading…"
+                    ? "Uploading & processing…"
                     : "Drag & drop your document here, or click to browse"}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -155,9 +218,17 @@ export default function AnalyzePage() {
 
             {file && (
               <div className="mt-4 flex items-center gap-3 rounded-lg border bg-muted/40 p-3">
-                <div className="rounded-lg bg-card p-2 text-muted-foreground">
-                  <FileText className="h-5 w-5" />
-                </div>
+                {previewDataUrl ? (
+                  <img
+                    src={previewDataUrl}
+                    alt="File preview thumbnail"
+                    className="h-10 w-10 rounded border object-cover"
+                  />
+                ) : (
+                  <div className="rounded-lg bg-card p-2 text-muted-foreground">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
                   <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
