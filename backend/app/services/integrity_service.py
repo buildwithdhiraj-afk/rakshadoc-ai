@@ -1,5 +1,5 @@
 import hashlib
-from app.models import VerificationRecord
+import uuid
 
 def compute_sha256(file_path: str) -> str:
     sha = hashlib.sha256()
@@ -9,4 +9,5 @@ def compute_sha256(file_path: str) -> str:
     return sha.hexdigest()
 
 def generate_verification_id(doc_hash: str) -> str:
-    return f"DOC-{doc_hash[:6].upper()}"
+    rnd = uuid.uuid4().hex[:4].upper()
+    return f"DOC-{doc_hash[:6].upper()}-{rnd}"

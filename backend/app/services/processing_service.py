@@ -72,17 +72,19 @@ def run_processing_pipeline(db: Session, job_id: str):
             sha = compute_sha256(doc.storage_path)
             doc.sha256_hash = sha
             doc.tamper_risk = "LOW"
-            ver = VerificationRecord(
-                verification_id=generate_verification_id(sha),
-                document_id=doc.id,
-                document_hash=sha,
-                integrity_status="VALID",
-                tamper_risk="LOW",
-                sensitive_elements=3,
-                protected_copy_available=True,
-                braille_available=True
-            )
-            db.add(ver)
+            existing_ver = db.query(VerificationRecord).filter_by(document_id=doc.id).first()
+            if not existing_ver:
+                ver = VerificationRecord(
+                    verification_id=generate_verification_id(sha),
+                    document_id=doc.id,
+                    document_hash=sha,
+                    integrity_status="VALID",
+                    tamper_risk="LOW",
+                    sensitive_elements=3,
+                    protected_copy_available=True,
+                    braille_available=True
+                )
+                db.add(ver)
 
         completed.append(step_name)
         job.completed_steps = completed
