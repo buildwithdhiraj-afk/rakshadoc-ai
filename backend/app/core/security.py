@@ -2,7 +2,7 @@ import datetime
 from typing import Optional
 import jwt
 import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from app.core.config import settings
@@ -36,13 +36,22 @@ def decode_token(token: str) -> dict:
             detail="Invalid or expired authentication token",
         )
 
-def get_current_user_payload(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> dict:
-    if not credentials or not credentials.credentials:
+def get_current_user_payload(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    token: Optional[str] = Query(None)
+) -> dict:
+    raw_token = None
+    if credentials and credentials.credentials:
+        raw_token = credentials.credentials
+    elif token:
+        raw_token = token
+
+    if not raw_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing authentication credentials",
         )
-    return decode_token(credentials.credentials)
+    return decode_token(raw_token)
 
 def require_admin(payload: dict = Depends(get_current_user_payload)):
     if payload.get("role") != "admin":

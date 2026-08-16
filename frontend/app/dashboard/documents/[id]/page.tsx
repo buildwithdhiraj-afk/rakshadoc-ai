@@ -140,8 +140,11 @@ export default function DocumentDetailPage() {
   useEffect(() => {
     const el = viewerRef.current;
     if (!el) return;
+    if (!imgWidth) {
+      setImgWidth(Math.max(320, el.clientWidth - 40));
+    }
     const measure = () => {
-      if (natural && fitMode === "width") {
+      if (fitMode === "width") {
         setImgWidth(Math.max(320, el.clientWidth - 40));
       }
     };
@@ -149,7 +152,7 @@ export default function DocumentDetailPage() {
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [natural, fitMode]);
+  }, [natural, fitMode, loading, imgWidth]);
 
   const isDemo = doc?.demo === true || demoMode;
 
@@ -499,19 +502,14 @@ export default function DocumentDetailPage() {
                   transition: "transform 150ms ease",
                 }}
               >
-                {imgWidth ? (
-                  <img
-                    src={signedUrl(id, safePage)}
-                    alt={`Document page ${safePage}`}
-                    onLoad={onImageLoad}
-                    draggable={false}
-                    className="block max-w-none select-none shadow-sm"
-                  />
-                ) : (
-                  <Skeleton className="h-[60vh] w-[42vw]" />
-                )}
-                {imgWidth &&
-                  pageDetections.map((d) => (
+                <img
+                  src={signedUrl(id, safePage)}
+                  alt={`Document page ${safePage}`}
+                  onLoad={onImageLoad}
+                  draggable={false}
+                  className="block max-w-none select-none shadow-sm"
+                />
+                {pageDetections.map((d) => (
                     <button
                       key={d.id}
                       onClick={() => setSelectedId((cur) => (cur === d.id ? null : d.id))}
