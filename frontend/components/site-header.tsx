@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LayoutDashboard, LogOut, Menu, ScanText, ShieldCheck, Settings, UserRound } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
@@ -38,8 +38,15 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const initials = (user?.full_name ?? user?.email ?? "G")
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const currentUser = mounted ? user : null;
+
+  const initials = (currentUser?.full_name ?? currentUser?.email ?? "G")
     .split(" ")
     .map((p) => p[0])
     .join("")
@@ -49,12 +56,12 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href={user ? "/dashboard" : "/"} className="shrink-0" aria-label="RakshaDoc AI home">
+        <Link href={currentUser ? "/dashboard" : "/"} className="shrink-0" aria-label="RakshaDoc AI home">
           <Logo />
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Main navigation">
-          {(user ? appLinks : publicLinks).map((link) => {
+          {(currentUser ? appLinks : publicLinks).map((link) => {
             const Icon = (link as { icon?: typeof LayoutDashboard }).icon;
             const active =
               link.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(link.href);
@@ -75,7 +82,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 lg:flex">
-          {!user ? (
+          {!currentUser ? (
             <>
               <Button asChild variant="ghost" size="sm">
                 <Link href="/login">Sign In</Link>
@@ -86,7 +93,7 @@ export function SiteHeader() {
             </>
           ) : (
             <>
-              {user.role === "admin" && (
+              {currentUser.role === "admin" && (
                 <Button asChild variant="outline" size="sm">
                   <Link href="/dashboard/admin">Admin</Link>
                 </Button>
@@ -103,9 +110,9 @@ export function SiteHeader() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div className="flex flex-col">
-                      <span className="font-medium">{user.full_name}</span>
+                      <span className="font-medium">{currentUser.full_name}</span>
                       <span className="text-xs font-normal text-muted-foreground">
-                        {user.email}
+                        {currentUser.email}
                       </span>
                     </div>
                   </DropdownMenuLabel>
@@ -137,7 +144,7 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
-          {!user ? (
+          {!currentUser ? (
             <Button asChild variant="saffron" size="sm">
               <Link href="/register">Get Started</Link>
             </Button>
@@ -157,7 +164,7 @@ export function SiteHeader() {
                 <SheetTitle className="sr-only">Navigation menu</SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-1 pt-4">
-                {(user ? appLinks : publicLinks).map((link) => (
+                {(currentUser ? appLinks : publicLinks).map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
@@ -167,7 +174,7 @@ export function SiteHeader() {
                     {link.label}
                   </Link>
                 ))}
-                {user?.role === "admin" && (
+                {currentUser?.role === "admin" && (
                   <Link
                     href="/dashboard/admin"
                     onClick={() => setOpen(false)}
@@ -178,7 +185,7 @@ export function SiteHeader() {
                 )}
               </div>
               <div className="mt-6 border-t pt-4">
-                {user ? (
+                {currentUser ? (
                   <div className="flex flex-col gap-2">
                     <Link
                       href="/dashboard/profile"

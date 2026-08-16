@@ -5,9 +5,9 @@ import { api, ApiClientError, clearAuth, getStoredUser, getToken, setStoredUser,
 import type { User } from "@/types";
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(() => getStoredUser());
-  const [loading, setLoading] = useState<boolean>(() => !!getToken());
-  const [initialized, setInitialized] = useState<boolean>(() => !getToken());
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [initialized, setInitialized] = useState<boolean>(false);
 
   const refresh = useCallback(async () => {
     if (!getToken()) {
@@ -34,7 +34,15 @@ export function useAuth() {
   }, []);
 
   useEffect(() => {
-    if (!getToken()) return;
+    const stored = getStoredUser();
+    if (stored) {
+      setUser(stored);
+    }
+    if (!getToken()) {
+      setLoading(false);
+      setInitialized(true);
+      return;
+    }
     let ignore = false;
     api
       .me()
