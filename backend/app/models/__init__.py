@@ -12,7 +12,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
-    role = Column(String, default="user", nullable=False) # guest, user, admin
+    role = Column(String, default="user", nullable=False) # user, admin
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Document(Base):
@@ -28,6 +28,8 @@ class Document(Base):
     sha256_hash = Column(String, nullable=True)
     tamper_risk = Column(String, nullable=True) # LOW, MEDIUM, HIGH
     storage_path = Column(String, nullable=False)
+    # True only for synthetically generated samples, never for real uploads.
+    demo = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Detection(Base):
@@ -87,6 +89,7 @@ class ProtectionRecord(Base):
     method = Column(String, default="redact")
     elements = Column(JSON, nullable=False)
     file_path = Column(String, nullable=False)
+    page = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class AuditLog(Base):

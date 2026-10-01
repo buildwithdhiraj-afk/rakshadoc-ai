@@ -11,13 +11,13 @@ import {
   ShieldCheck,
   ShieldAlert,
   Sparkles,
+  Lock,
+  ExternalLink,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DoubleBezelCard } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -98,180 +98,195 @@ function VerifyContent() {
   const valid = record?.integrity_status === "VALID";
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Verify Integrity</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Confirm the exact file has not changed since its SHA-256 hash was recorded.
+    <div className="mx-auto max-w-4xl space-y-8">
+      {/* Header */}
+      <div className="border-b border-white/[0.08] pb-6">
+        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-amber-300">
+          Cryptographic Proof Engine
+        </span>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-white font-heading sm:text-3xl">
+          Integrity & Anti-Tamper Verification
+        </h1>
+        <p className="mt-1 text-xs text-slate-400">
+          Compute mathematical SHA-256 proofs to guarantee zero single-pixel modifications or file
+          forgery since ingestion.
         </p>
       </div>
 
-      {error ? <ErrorState error={error} onRetry={() => setError(null)} title="Verification failed" /> : null}
+      {error ? <ErrorState error={error} onRetry={() => setError(null)} title="Verification diagnostic failed" /> : null}
 
       {loading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-64 w-full" />
+        <div className="space-y-4">
+          <Skeleton className="h-12 w-full bg-white/5 rounded-2xl" />
+          <Skeleton className="h-64 w-full bg-white/5 rounded-2xl" />
         </div>
       ) : documents.length === 0 ? (
         <EmptyState
           icon={ShieldCheck}
-          title="No documents to verify"
-          description="Upload and process a document first, then come back to verify its integrity."
+          title="No documents in vault"
+          description="Upload and process a document first to generate cryptographic SHA-256 proofs."
           action="Analyze a Document"
           actionHref="/dashboard/analyze"
         />
       ) : (
         <>
-          <Card>
-            <CardContent className="space-y-4 p-5">
-              <div className="space-y-2">
-                <Label htmlFor="doc-select">Document</Label>
-                <Select value={selectedId} onValueChange={setSelectedId}>
-                  <SelectTrigger id="doc-select">
-                    <SelectValue placeholder="Select a document" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {documents.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.original_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button variant="saffron" className="w-full sm:w-auto" onClick={verify} disabled={verifying || !selectedId}>
-                {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-4 w-4" />}
-                {verifying ? "Verifying…" : "Verify Integrity"}
-              </Button>
-              {selectedDoc?.status !== "completed" && (
-                <p className="text-xs text-warning">
-                  This document has not completed processing. Verification may not be available.
-                </p>
+          <DoubleBezelCard innerClassName="p-6 md:p-8 space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="doc-select" className="font-mono text-xs text-slate-300">
+                Target Vault Document
+              </Label>
+              <Select value={selectedId} onValueChange={setSelectedId}>
+                <SelectTrigger id="doc-select" className="rounded-xl border-white/10 bg-white/[0.03] text-xs text-white">
+                  <SelectValue placeholder="Select a document" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-white/10 bg-[#070b14] text-white">
+                  {documents.map((d) => (
+                    <SelectItem key={d.id} value={d.id} className="text-xs focus:bg-white/10">
+                      {d.original_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <button
+              onClick={verify}
+              disabled={verifying || !selectedId}
+              className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 px-6 py-3 text-xs font-semibold text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all hover:shadow-[0_0_30px_rgba(245,158,11,0.5)] active:scale-98 disabled:opacity-50"
+            >
+              {verifying ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
+                  <span>Computing SHA-256 Checksum…</span>
+                </>
+              ) : (
+                <>
+                  <Fingerprint className="h-4 w-4" />
+                  <span>Run Verification Audit</span>
+                </>
               )}
-            </CardContent>
-          </Card>
+            </button>
+
+            {selectedDoc?.status !== "completed" && (
+              <p className="font-mono text-[11px] text-amber-400">
+                Notice: Document processing is still incomplete. Proof verification is preliminary.
+              </p>
+            )}
+          </DoubleBezelCard>
 
           {record && (
-            <Card>
-              <CardHeader>
-                <div className="flex flex-wrap items-center gap-2">
-                  <CardTitle className="text-base">Verification Record</CardTitle>
+            <DoubleBezelCard
+              className="shadow-[0_20px_60px_rgba(0,0,0,0.7)]"
+              innerClassName="p-6 md:p-8 space-y-6"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-base font-bold text-white font-heading">
+                    Immutable Verification Record
+                  </h3>
                   <Badge variant={valid ? "success" : "destructive"}>
                     {valid ? <CheckCircle2 className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
-                    {valid ? "VERIFIED" : "TAMPERED"}
+                    {valid ? "100% VERIFIED MATCH" : "POTENTIAL TAMPER DETECTED"}
                   </Badge>
                 </div>
-                <CardDescription className="text-xs">
-                  Recorded {formatDate(record.created_at)}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-6 sm:grid-cols-[1fr_auto]">
-                <div className="space-y-4">
+                <span className="font-mono text-[11px] text-slate-400">
+                  Audit Timestamp: {formatDate(record.created_at)}
+                </span>
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-12">
+                <div className="space-y-4 lg:col-span-8">
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Document ID
+                    <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+                        Verification Ledger ID
                       </p>
-                      <p className="mt-1 font-mono text-sm font-semibold text-foreground">
+                      <p className="mt-1 font-mono text-xs font-bold text-amber-300">
                         {record.verification_id}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Hash Algorithm
+
+                    <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+                        Cryptographic Algorithm
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-foreground">
-                        {record.hash_algorithm}
+                      <p className="mt-1 font-mono text-xs font-bold text-white">
+                        {record.hash_algorithm} (FIPS 180-4)
                       </p>
                     </div>
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Document Hash
-                      </p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <code className="break-all rounded bg-muted px-2 py-1 font-mono text-xs text-foreground">
-                          {truncateHash(record.document_hash)}
-                        </code>
-                        <Button variant="ghost" size="icon-sm" onClick={copyHash} aria-label="Copy full hash">
-                          {copied ? (
-                            <CheckCircle2 className="h-4 w-4 text-success" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
+
+                    <div className="sm:col-span-2 rounded-2xl border border-white/10 bg-black/40 p-4">
+                      <div className="flex items-center justify-between">
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+                          Binary Document Hash
+                        </p>
+                        <button
+                          onClick={copyHash}
+                          className="flex items-center gap-1 font-mono text-[10px] text-amber-400 hover:text-amber-300"
+                        >
+                          {copied ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                          <span>{copied ? "Copied" : "Copy Hash"}</span>
+                        </button>
                       </div>
+                      <p className="mt-2 break-all font-mono text-xs text-slate-200">
+                        {record.document_hash}
+                      </p>
                     </div>
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Tamper Risk
+
+                    <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+                        Tamper Risk Level
                       </p>
                       <div className="mt-1">
                         <RiskBadge risk={record.tamper_risk} />
                       </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Sensitive Elements
+
+                    <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+                        Sensitive Marks
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-foreground">
-                        {record.sensitive_elements}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Protected Copy
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-foreground">
-                        {record.protected_copy_available ? "✓ Available" : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Braille Output
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-foreground">
-                        {record.braille_available ? "✓ Available" : "—"}
+                      <p className="mt-1 font-mono text-xs font-bold text-white">
+                        {record.sensitive_elements} Elements Isolated
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center gap-2">
-                  <div className="rounded-xl border bg-white p-3">
+                {/* QR Code Card */}
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/60 p-6 text-center lg:col-span-4">
+                  <div className="rounded-2xl border border-white/20 bg-white p-3 shadow-xl">
                     {origin ? (
                       <QRCodeSVG
                         value={`${origin}/verify/${record.verification_id}`}
-                        size={128}
+                        size={140}
                         marginSize={0}
-                        fgColor="#0d2b52"
+                        fgColor="#030712"
                       />
                     ) : (
-                      <Skeleton className="h-32 w-32" />
+                      <Skeleton className="h-36 w-36" />
                     )}
                   </div>
-                  <p className="max-w-[160px] text-center text-[11px] text-muted-foreground">
-                    Public verification link
+                  <p className="mt-4 font-mono text-[10px] text-slate-400 uppercase tracking-widest">
+                    Public Verification QR
                   </p>
+                  <a
+                    href={`/verify/${record.verification_id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300"
+                  >
+                    Open Public Portal <ExternalLink className="h-3 w-3" />
+                  </a>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </DoubleBezelCard>
           )}
 
-          {selectedDoc?.demo && (
-            <p className="flex items-start gap-2 rounded-lg border border-dashed border-warning/40 bg-warning/5 p-3 text-sm text-muted-foreground">
-              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-              The integrity hash and verification for this document are real, but its analysis was
-              produced in demo mode.
-            </p>
-          )}
-
-          <div className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
-            Integrity verification confirms that the exact file has not changed after the recorded
-            hash was generated. It does not independently prove legal authenticity.
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-xs leading-relaxed text-slate-400 font-mono">
+            Cryptographic verification proves byte-level correspondence with the original snapshot.
+            It does not replace statutory certification from sovereign administrative bodies.
           </div>
-
-          <Separator />
 
           <AIDisclaimer />
         </>
@@ -282,7 +297,7 @@ function VerifyContent() {
 
 export default function VerifyPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-[60vh] w-full" />}>
+    <Suspense fallback={<Skeleton className="h-[60vh] w-full bg-white/5 rounded-3xl" />}>
       <VerifyContent />
     </Suspense>
   );

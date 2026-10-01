@@ -12,21 +12,79 @@ from app.core.security import get_current_user_payload
 from app.models import Document, Detection, OCRResult, ProcessingJob, ProtectionRecord, VerificationRecord, AuditLog
 from app.schemas import (
     DocumentOut, DocumentAnalysis, DetectionOut, OCRResultOut, ProcessingJobOut,
-    VerificationRecordOut, ProtectRequest, ProtectedCopyOut, BrailleOutput, AuditEventOut
+    VerificationRecordOut, ProtectRequest, ProtectedCopyOut, BrailleOutput, AuditEventOut,
+    DocumentInsights, EntityOut
 )
-from app.services.processing_service import run_processing_pipeline, STEPS
-from app.services.integrity_service import compute_sha256, generate_verification_id
-from app.services.protection_service import apply_protection
-from app.services.braille_service import translate_to_braille
-from app.services.audit_service import log_audit
+from app.services.entities import entities_from_pages
+from app.services.processing import run_processing_pipeline, STEPS
+from app.services.integrity import compute_sha256, generate_verification_id
+from app.services.protection import apply_protection, build_protected_pdf, page_detections
+from app.services.braille import translate_to_braille
+from app.services.audit import log_audit
 from app.services.demo_generator import generate_synthetic_page
+from app.services.rendering import ensure_page_rendered, get_source_page_count
+from ml.document_detection import sanitize_bbox
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 ALLOWED_EXTS = set(settings.ALLOWED_EXTENSIONS.split(","))
 
+DEFAULT_PROTECTION_ELEMENTS = ["signature", "stamp"]
+
+def _protected_record_for_page(
+    db: Session,
+    doc: Document,
+    page_no: int,
+    level: str,
+    method: str,
+    elements: List[str],
+    force: bool = False,
+) -> Optional[ProtectionRecord]:
+    """Return the stored protected page, generating it on first request.
+
+    The newest record for the page wins, so re-protecting a document with new
+    settings invalidates the previously served page. `force=True` (an explicit
+    protect request) always re-renders so new settings are actually applied.
+    """
+    if not force:
+        rec = (
+            db.query(ProtectionRecord)
+            .filter_by(document_id=doc.id, page=page_no)
+            .order_by(ProtectionRecord.created_at.desc())
+            .first()
+        )
+        if rec and os.path.exists(rec.file_path):
+            return rec
+
+    page_file = ensure_page_rendered(doc, page_no, force=True)
+    if not page_file:
+        return None
+
+    dets = db.query(Detection).filter_by(document_id=doc.id).all()
+    filename = f"protected_p{page_no}_{uuid.uuid4().hex[:8]}.png"
+    output_path = os.path.join(settings.STORAGE_DIR, doc.id, filename)
+    apply_protection(
+        page_file,
+        page_detections(dets, page_no),
+        output_path,
+        method=method,
+        target_categories=elements,
+    )
+    rec = ProtectionRecord(
+        document_id=doc.id,
+        protection_level=level,
+        method=method,
+        elements=list(elements),
+        file_path=output_path,
+        page=page_no,
+    )
+    db.add(rec)
+    db.commit()
+    db.refresh(rec)
+    return rec
+
 @router.post("/upload", response_model=DocumentOut, status_code=201)
-def upload_document(
+async def upload_document(
     file: UploadFile = File(...),
     payload: dict = Depends(get_current_user_payload),
     db: Session = Depends(get_db)
@@ -43,17 +101,26 @@ def upload_document(
     os.makedirs(subfolder, exist_ok=True)
     saved_path = os.path.join(subfolder, f"{doc_id}.{ext}")
 
-    size_bytes = 0
-    with open(saved_path, "wb") as f:
-        while chunk := file.file.read(65536):
-            f.write(chunk)
-            size_bytes += len(chunk)
+    content = await file.read()
+    size_bytes = len(content)
 
     if size_bytes > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
         shutil.rmtree(subfolder, ignore_errors=True)
         raise HTTPException(status_code=400, detail="File size exceeds maximum limit")
 
+    with open(saved_path, "wb") as f:
+        f.write(content)
+
     sha = compute_sha256(saved_path)
+
+    page_count = 1
+    if ext == "pdf":
+        try:
+            import fitz
+            with fitz.open(saved_path) as pdf_doc:
+                page_count = pdf_doc.page_count
+        except Exception:
+            page_count = 1
 
     doc = Document(
         id=doc_id,
@@ -61,7 +128,7 @@ def upload_document(
         original_name=filename,
         mime_type=file.content_type or "image/png",
         size_bytes=size_bytes,
-        page_count=1,
+        page_count=page_count,
         quality_score=87.0,
         status="uploaded",
         sha256_hash=sha,
@@ -85,7 +152,7 @@ def upload_document(
         tamper_risk=doc.tamper_risk,
         analysis=None,
         created_at=doc.created_at.isoformat(),
-        demo=True
+        demo=False
     )
 
 @router.post("/demo-sample", response_model=DocumentOut, status_code=201)
@@ -122,7 +189,8 @@ def create_demo_sample(
         quality_score=92.0,
         status="uploaded",
         sha256_hash=sha,
-        storage_path=saved_path
+        storage_path=saved_path,
+        demo=True
     )
     db.add(doc)
     db.commit()
@@ -169,7 +237,7 @@ def list_documents(
             tamper_risk=d.tamper_risk,
             analysis=analysis,
             created_at=d.created_at.isoformat(),
-            demo=True
+            demo=bool(d.demo)
         ))
     return res
 
@@ -197,7 +265,7 @@ def get_document(
         tamper_risk=doc.tamper_risk,
         analysis=analysis,
         created_at=doc.created_at.isoformat(),
-        demo=True
+        demo=bool(doc.demo)
     )
 
 @router.post("/{id}/process", response_model=ProcessingJobOut, status_code=202)
@@ -290,7 +358,12 @@ def get_ocr(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    ocrs = db.query(OCRResult).filter_by(document_id=id).all()
+    ocrs = (
+        db.query(OCRResult)
+        .filter_by(document_id=id)
+        .order_by(OCRResult.page.asc())
+        .all()
+    )
     return [
         OCRResultOut(
             document_id=o.document_id,
@@ -302,6 +375,42 @@ def get_ocr(
             structured=o.structured
         ) for o in ocrs
     ]
+
+@router.get("/{id}/insights", response_model=DocumentInsights)
+def get_insights(
+    id: str,
+    payload: dict = Depends(get_current_user_payload),
+    db: Session = Depends(get_db)
+):
+    """Named entities and detected sections, derived from real extracted text.
+
+    Every returned entity is a literal match inside the text of `source`; pages
+    with no extracted text simply contribute nothing.
+    """
+    owner_id = payload.get("sub")
+    doc = db.query(Document).filter_by(id=id, owner_id=owner_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    ocrs = (
+        db.query(OCRResult)
+        .filter_by(document_id=id)
+        .order_by(OCRResult.page.asc())
+        .all()
+    )
+    pages = [{"page": o.page, "text": o.text} for o in ocrs if o.text]
+    entities = entities_from_pages(pages)
+
+    dets = db.query(Detection).filter_by(document_id=id).all()
+    sections = sorted({d.category for d in dets})
+
+    return DocumentInsights(
+        document_id=id,
+        text_source=ocrs[0].source if ocrs else "none",
+        pages_with_text=len(pages),
+        entities=[EntityOut(**e) for e in entities],
+        sections=sections,
+    )
 
 @router.get("/{id}/detections", response_model=List[DetectionOut])
 def get_detections(
@@ -315,18 +424,22 @@ def get_detections(
         raise HTTPException(status_code=404, detail="Document not found")
 
     dets = db.query(Detection).filter_by(document_id=id).all()
-    return [
-        DetectionOut(
+    out = []
+    for d in dets:
+        bbox = sanitize_bbox(d.bbox)
+        if bbox is None:
+            continue  # never return boxes that would break the overlay
+        out.append(DetectionOut(
             id=d.id,
             document_id=d.document_id,
             page=d.page,
             category=d.category,
-            bbox=d.bbox,
+            bbox=bbox,
             confidence=d.confidence,
             sensitivity=d.sensitivity,
             action=d.action
-        ) for d in dets
-    ]
+        ))
+    return out
 
 @router.get("/{id}/preview")
 def get_preview(
@@ -340,9 +453,10 @@ def get_preview(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    page_file = os.path.join(settings.STORAGE_DIR, id, f"page_{page}.png")
-    if not os.path.exists(page_file):
-        generate_synthetic_page(id, page, doc.original_name)
+    # Rendered page == the exact pixels the detections were computed on.
+    page_file = ensure_page_rendered(doc, page)
+    if not page_file:
+        raise HTTPException(status_code=404, detail="Page not found")
 
     return FileResponse(page_file, media_type="image/png")
 
@@ -358,43 +472,44 @@ def protect_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    dets = db.query(Detection).filter_by(document_id=id).all()
-    page_file = os.path.join(settings.STORAGE_DIR, id, "page_1.png")
-    if not os.path.exists(page_file):
-        generate_synthetic_page(id, 1, doc.original_name)
+    total_pages = max(1, int(get_source_page_count(doc.storage_path)))
 
-    protected_filename = f"protected_{uuid.uuid4().hex[:8]}.png"
-    output_path = os.path.join(settings.STORAGE_DIR, id, protected_filename)
+    created: List[ProtectionRecord] = []
+    for page_no in range(1, total_pages + 1):
+        rec = _protected_record_for_page(
+            db, doc, page_no, req.level, req.method, req.elements, force=True
+        )
+        if not rec:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Document page {page_no} could not be rendered",
+            )
+        if rec.page != page_no:
+            raise HTTPException(status_code=500, detail="Protected page mismatch")
+        created.append(rec)
 
-    apply_protection(page_file, dets, output_path, method=req.method, target_categories=req.elements)
-
-    rec = ProtectionRecord(
-        document_id=id,
-        protection_level=req.level,
-        method=req.method,
-        elements=req.elements,
-        file_path=output_path
+    log_audit(
+        db, "protect", user_id=owner_id, document_id=id,
+        detail=f"Method: {req.method} · pages: {total_pages}",
     )
-    db.add(rec)
-    db.commit()
-    db.refresh(rec)
 
-    log_audit(db, "protect", user_id=owner_id, document_id=id, detail=f"Method: {req.method}")
-
+    head = created[0]
     return ProtectedCopyOut(
-        id=rec.id,
-        document_id=rec.document_id,
-        protection_level=rec.protection_level,
-        method=rec.method,
-        elements=rec.elements,
-        created_at=rec.created_at.isoformat(),
-        download_url=f"/api/documents/{id}/protected-copy"
+        id=head.id,
+        document_id=head.document_id,
+        protection_level=head.protection_level,
+        method=head.method,
+        elements=head.elements,
+        created_at=head.created_at.isoformat(),
+        download_url=f"/api/documents/{id}/protected-copy?download=1"
     )
 
 @router.get("/{id}/protected-copy")
 def get_protected_copy(
     id: str,
+    page: Optional[int] = Query(None, ge=1),
     download: Optional[int] = Query(None),
+    inline: Optional[int] = Query(None),
     payload: dict = Depends(get_current_user_payload),
     db: Session = Depends(get_db)
 ):
@@ -403,30 +518,62 @@ def get_protected_copy(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    rec = db.query(ProtectionRecord).filter_by(document_id=id).order_by(ProtectionRecord.created_at.desc()).first()
-    if not rec or not os.path.exists(rec.file_path):
-        page_file = os.path.join(settings.STORAGE_DIR, id, "page_1.png")
-        if not os.path.exists(page_file):
-            generate_synthetic_page(id, 1, doc.original_name)
-        dets = db.query(Detection).filter_by(document_id=id).all()
-        protected_filename = f"protected_{uuid.uuid4().hex[:8]}.png"
-        output_path = os.path.join(settings.STORAGE_DIR, id, protected_filename)
-        apply_protection(page_file, dets, output_path, method="redact", target_categories=["signature", "stamp"])
-        rec = ProtectionRecord(document_id=id, protection_level="high", method="redact", elements=["signature", "stamp"], file_path=output_path)
-        db.add(rec)
-        db.commit()
-        db.refresh(rec)
+    total_pages = max(1, int(get_source_page_count(doc.storage_path)))
+    latest = (
+        db.query(ProtectionRecord)
+        .filter_by(document_id=id)
+        .order_by(ProtectionRecord.created_at.desc())
+        .first()
+    )
+    level = latest.protection_level if latest else "high"
+    method = latest.method if latest else "redact"
+    elements = latest.elements if latest else list(DEFAULT_PROTECTION_ELEMENTS)
 
+    # A single page request serves that page's redaction only.
+    if page is not None:
+        if page > total_pages:
+            raise HTTPException(status_code=404, detail="Page out of range")
+        rec = _protected_record_for_page(db, doc, page, level, method, elements)
+        if not rec:
+            raise HTTPException(status_code=404, detail="Protected copy not available")
+        if download == 1:
+            return FileResponse(
+                rec.file_path, media_type="image/png", filename=f"protected_page_{page}.png"
+            )
+        return FileResponse(rec.file_path, media_type="image/png")
+
+    # No page: a download is the whole protected document, assembled as a PDF.
     if download == 1:
-        return FileResponse(rec.file_path, media_type="image/png", filename=f"protected_{doc.original_name}.png")
+        paths = []
+        for page_no in range(1, total_pages + 1):
+            rec = _protected_record_for_page(db, doc, page_no, level, method, elements)
+            if rec:
+                paths.append(rec.file_path)
+        if not paths:
+            raise HTTPException(status_code=404, detail="Protected copy not available")
+        if len(paths) == 1:
+            return FileResponse(
+                paths[0], media_type="image/png", filename=f"protected_{doc.original_name}.png"
+            )
+        pdf_path = os.path.join(
+            settings.STORAGE_DIR, id, f"protected_{uuid.uuid4().hex[:8]}.pdf"
+        )
+        build_protected_pdf(paths, pdf_path)
+        return FileResponse(
+            pdf_path, media_type="application/pdf", filename=f"protected_{doc.original_name}.pdf"
+        )
+
+    head = _protected_record_for_page(db, doc, 1, level, method, elements)
+    if not head:
+        raise HTTPException(status_code=404, detail="Protected copy not available")
 
     return ProtectedCopyOut(
-        id=rec.id,
-        document_id=rec.document_id,
-        protection_level=rec.protection_level,
-        method=rec.method,
-        elements=rec.elements,
-        created_at=rec.created_at.isoformat(),
+        id=head.id,
+        document_id=head.document_id,
+        protection_level=head.protection_level,
+        method=head.method,
+        elements=head.elements,
+        created_at=head.created_at.isoformat(),
         download_url=f"/api/documents/{id}/protected-copy?download=1"
     )
 
@@ -443,7 +590,7 @@ def verify_document(
 
     ver = db.query(VerificationRecord).filter_by(document_id=id).first()
     if not ver:
-        sha = compute_sha256(doc.storage_path)
+        sha = compute_sha256(doc.storage_path) if (doc.storage_path and os.path.exists(doc.storage_path)) else ("0" * 64)
         ver = VerificationRecord(
             verification_id=generate_verification_id(sha),
             document_id=id,
@@ -455,6 +602,20 @@ def verify_document(
             braille_available=True
         )
         db.add(ver)
+        db.commit()
+        db.refresh(ver)
+
+    # Re-check the stored file against the recorded reference hash on every verify.
+    current_sha = compute_sha256(doc.storage_path) if (doc.storage_path and os.path.exists(doc.storage_path)) else None
+    if current_sha:
+        if current_sha != ver.document_hash:
+            ver.integrity_status = "TAMPERED"
+            ver.tamper_risk = "HIGH"
+            doc.tamper_risk = "HIGH"
+        else:
+            ver.integrity_status = "VALID"
+            ver.tamper_risk = "LOW"
+            doc.tamper_risk = "LOW"
         db.commit()
         db.refresh(ver)
 
@@ -486,8 +647,13 @@ def get_braille(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    ocr = db.query(OCRResult).filter_by(document_id=id).first()
-    extracted = ocr.text if ocr else f"RAKSHADOC AI DEMO CONTENT FOR {doc.original_name}"
+    ocrs = (
+        db.query(OCRResult)
+        .filter_by(document_id=id)
+        .order_by(OCRResult.page.asc())
+        .all()
+    )
+    extracted = "\n\n".join(o.text for o in ocrs if o.text).strip()
     braille_unic = translate_to_braille(extracted, language or "English")
 
     return BrailleOutput(
@@ -496,7 +662,7 @@ def get_braille(
         braille_unicode=braille_unic,
         braille_bytes=len(braille_unic.encode("utf-8")),
         extracted_text=extracted,
-        source="demo"
+        source=ocrs[0].source if ocrs else "none"
     )
 
 @router.get("/{id}/audit", response_model=List[AuditEventOut])
@@ -532,6 +698,13 @@ def delete_document(
     doc = db.query(Document).filter_by(id=id, owner_id=owner_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+
+    db.query(Detection).filter_by(document_id=id).delete()
+    db.query(OCRResult).filter_by(document_id=id).delete()
+    db.query(ProcessingJob).filter_by(document_id=id).delete()
+    db.query(ProtectionRecord).filter_by(document_id=id).delete()
+    db.query(VerificationRecord).filter_by(document_id=id).delete()
+    db.query(AuditLog).filter_by(document_id=id).delete()
 
     shutil.rmtree(os.path.join(settings.UPLOAD_DIR, id), ignore_errors=True)
     shutil.rmtree(os.path.join(settings.STORAGE_DIR, id), ignore_errors=True)

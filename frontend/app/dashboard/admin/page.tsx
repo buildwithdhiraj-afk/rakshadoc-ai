@@ -1,17 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Activity,
-  Brain,
-  Clock,
-  FlaskConical,
-  Gauge,
-  Lock,
-  ScanLine,
-  ShieldAlert,
-} from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Activity, Clock, ShieldAlert } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -28,12 +19,7 @@ import { EmptyState } from "@/components/empty-state";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type {
-  AdminMetrics,
-  AuditEvent,
-  Experiment,
-  ModelInfo,
-} from "@/types";
+import type { AdminMetrics, AuditEvent } from "@/types";
 
 type MetricCard = {
   label: string;
@@ -43,8 +29,6 @@ type MetricCard = {
 };
 
 function metricCards(m: AdminMetrics | null): MetricCard[] {
-  const f = (v: number | null, suffix = "%") =>
-    v == null ? "Not evaluated" : `${(v * 100).toFixed(1)}${suffix}`;
   return [
     {
       label: "Documents Processed",
@@ -58,39 +42,19 @@ function metricCards(m: AdminMetrics | null): MetricCard[] {
       muted: false,
       icon: Clock,
     },
-    { label: "Layout mAP", value: m ? f(m.layout_map) : "—", muted: m ? m.layout_map == null : true, icon: ScanLine },
-    { label: "OCR Accuracy", value: m ? f(m.ocr_accuracy) : "—", muted: m ? m.ocr_accuracy == null : true, icon: Gauge },
-    { label: "Sensitive Element mAP", value: m ? f(m.sensitive_map) : "—", muted: m ? m.sensitive_map == null : true, icon: Lock },
-    { label: "Tamper Detection F1", value: m ? f(m.tamper_f1) : "—", muted: m ? m.tamper_f1 == null : true, icon: ShieldAlert },
-    { label: "Model Size", value: m ? (m.model_size_mb != null ? `${m.model_size_mb} MB` : "Not evaluated") : "—", muted: m ? m.model_size_mb == null : true, icon: Brain },
-    { label: "Average Memory", value: m ? (m.average_memory_mb != null ? `${m.average_memory_mb} MB` : "Not evaluated") : "—", muted: m ? m.average_memory_mb == null : true, icon: Brain },
+    {
+      label: "Model Status",
+      value: m ? (m.model_available ? "Loaded" : "Demo fallback") : "—",
+      muted: false,
+      icon: ShieldAlert,
+    },
   ];
-}
-
-const EXPERIMENT_METRICS = [
-  { key: "map", label: "mAP" },
-  { key: "precision", label: "Precision" },
-  { key: "recall", label: "Recall" },
-  { key: "f1", label: "F1" },
-  { key: "inference_time", label: "Inference time" },
-  { key: "model_size", label: "Model size" },
-];
-
-function fmtMetric(v: number | string | null | undefined): string {
-  if (v == null || v === "") return "—";
-  if (typeof v === "number") {
-    if (v < 10) return v.toFixed(2);
-    return v.toFixed(0);
-  }
-  return String(v);
 }
 
 export default function AdminPage() {
   const { user } = useAuth();
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
-  const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [audit, setAudit] = useState<AuditEvent[]>([]);
-  const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
 
@@ -99,16 +63,12 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const [m, e, a, mo] = await Promise.all([
+      const [m, a] = await Promise.all([
         api.adminMetrics().then((r) => r as unknown as AdminMetrics),
-        api.adminExperiments(),
         api.adminAuditLogs(),
-        api.adminModels(),
       ]);
       setMetrics(m);
-      setExperiments(e);
       setAudit(a);
-      setModels(mo);
     } catch (err) {
       setError(err);
     } finally {
@@ -121,16 +81,12 @@ export default function AdminPage() {
     let ignore = false;
     Promise.all([
       api.adminMetrics().then((r) => r as unknown as AdminMetrics),
-      api.adminExperiments(),
       api.adminAuditLogs(),
-      api.adminModels(),
     ])
-      .then(([m, e, a, mo]) => {
+      .then(([m, a]) => {
         if (ignore) return;
         setMetrics(m);
-        setExperiments(e);
         setAudit(a);
-        setModels(mo);
       })
       .catch((err) => {
         if (!ignore) setError(err);
@@ -147,9 +103,9 @@ export default function AdminPage() {
     return (
       <div className="mx-auto max-w-xl">
         <EmptyState
-          icon={FlaskConical}
+          icon={ShieldAlert}
           title="Admin access required"
-          description="Research metrics, experiments, audit logs and model information are only available to users with the admin role."
+          description="System metrics and audit logs are only available to users with the admin role."
         />
       </div>
     );
@@ -160,7 +116,7 @@ export default function AdminPage() {
       <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-28" />
           ))}
         </div>
@@ -170,19 +126,14 @@ export default function AdminPage() {
   }
 
   const mCards = metricCards(metrics);
-  const mapChartData = experiments
-    .filter((e) => e.status === "evaluated")
-    .map((e) => ({ e, map: e.metrics?.map }))
-    .filter((d): d is { e: Experiment; map: number } => typeof d.map === "number");
-  const maxMap = mapChartData.length ? Math.max(...mapChartData.map((d) => d.map as number)) : 1;
 
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Admin & Research</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Admin Console</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            System metrics, experiment evaluation and audit trails.
+            System metrics and audit trails.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
@@ -228,136 +179,6 @@ export default function AdminPage() {
           </div>
         </div>
       )}
-
-      <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Experiments
-        </h2>
-        {experiments.length === 0 ? (
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground">No experiments have been registered yet.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {mapChartData.length > 0 ? (
-              <Card className="mb-4">
-                <CardHeader>
-                  <CardTitle className="text-base">mAP Comparison</CardTitle>
-                  <CardDescription className="text-xs">
-                    Layout detection mAP across evaluated experiments.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {mapChartData.map(({ e, map }) => (
-                      <div key={e.id}>
-                        <div className="mb-1 flex items-center justify-between text-sm">
-                          <span className="font-medium text-foreground">{e.short_name}</span>
-                          <span className="tabular-nums text-muted-foreground">
-                            {(map * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="h-3 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-primary"
-                            style={{ width: `${Math.min(100, (map / maxMap) * 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <p className="mb-4 rounded-lg border border-border bg-card p-3 text-sm text-muted-foreground">
-                No experiment has an evaluated mAP yet. Metrics appear here once experiments are
-                actually run and evaluated.
-              </p>
-            )}
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Experiment</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>mAP</TableHead>
-                        <TableHead>Precision</TableHead>
-                        <TableHead>Recall</TableHead>
-                        <TableHead>F1</TableHead>
-                        <TableHead>Inference time</TableHead>
-                        <TableHead>Model size</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {experiments.map((e) => (
-                        <TableRow key={e.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium text-foreground">{e.short_name}</p>
-                              <p className="max-w-xs truncate text-xs text-muted-foreground">
-                                {e.name}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {e.status === "evaluated" ? (
-                              <Badge variant="success">Evaluated</Badge>
-                            ) : (
-                              <Badge variant="outline">Not evaluated</Badge>
-                            )}
-                          </TableCell>
-                          {EXPERIMENT_METRICS.map((m) => (
-                            <TableCell key={m.key} className="tabular-nums text-muted-foreground">
-                              {fmtMetric(e.metrics?.[m.key])}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
-      </div>
-
-      <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Models
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          {models.length === 0 ? (
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm text-muted-foreground">No model information registered.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            models.map((m) => (
-              <Card key={`${m.name}-${m.version}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-foreground">{m.name}</p>
-                    <Badge variant={m.available ? "success" : "warning"}>
-                      {m.available ? "Available" : "Not available"}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    v{m.version} · backend: {m.backend} · {m.loaded ? "loaded" : "not loaded"}
-                  </p>
-                  <p className="mt-2 text-xs text-muted-foreground">{m.input}</p>
-                  {m.notes && <p className="mt-2 text-xs text-muted-foreground">{m.notes}</p>}
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
-      </div>
 
       <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">

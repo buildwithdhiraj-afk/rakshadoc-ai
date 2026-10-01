@@ -3,9 +3,9 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
-    SECRET_KEY: str = "rakshadoc-secret-key-change-in-production-2026"
+    SECRET_KEY: str = os.environ.get("SECRET_KEY", "")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
-    DATABASE_URL: str = "sqlite:///./data/rakshadoc.db"
+    DATABASE_URL: str = os.environ.get("DATABASE_URL", "sqlite:///./data/rakshadoc.db")
 
     DATA_DIR: str = "./data"
     UPLOAD_DIR: str = "./data/uploads"
@@ -18,7 +18,9 @@ class Settings(BaseSettings):
     DEMO_SEED: int = 42
 
     FRONTEND_URL: str = "http://localhost:3000"
-    CORS_ORIGINS: str = "http://localhost:3000"
+    # Both hostnames are listed because the Origin header mirrors whatever the
+    # user typed. 127.0.0.1 is included so the loopback-IP form works too.
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
     PUBLIC_BASE_URL: str = "http://localhost:3000"
 
     RETENTION_DAYS: int = 90
@@ -28,6 +30,12 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 settings = Settings()
+
+if not settings.SECRET_KEY:
+    if settings.ENVIRONMENT == "development":
+        settings.SECRET_KEY = "dev-secret-key-change-in-production"
+    else:
+        raise ValueError("SECRET_KEY must be set in production environment")
 
 os.makedirs(settings.DATA_DIR, exist_ok=True)
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

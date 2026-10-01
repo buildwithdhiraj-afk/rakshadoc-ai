@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { AlertCircle, FileText, Sparkles, Loader2, UploadCloud } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileText, Sparkles, Loader2, UploadCloud, ShieldCheck, ArrowUpRight, Cpu } from "lucide-react";
+import { DoubleBezelCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ErrorState } from "@/components/error-state";
@@ -21,10 +21,10 @@ const ACCEPTED_TYPES = [
 const MAX_SIZE_MB = 25;
 
 const SAMPLE_OPTIONS = [
-  { type: "certificate", label: "Demo Certificate", desc: "Has signature & stamp" },
-  { type: "bank_form", label: "Demo Bank Form", desc: "Has tables & form fields" },
-  { type: "government_letter", label: "Demo Government Notice", desc: "Has Devanagari text" },
-  { type: "invoice", label: "Demo Invoice", desc: "Has itemized layout" },
+  { type: "certificate", label: "Demo Certificate", desc: "Signature, Stamp & QR Code" },
+  { type: "bank_form", label: "Demo Bank Form", desc: "Form fields & Tables" },
+  { type: "government_letter", label: "Demo Govt Notice", desc: "Multilingual Indic text" },
+  { type: "invoice", label: "Demo Invoice", desc: "Itemized layout structure" },
 ];
 
 export default function AnalyzePage() {
@@ -39,10 +39,10 @@ export default function AnalyzePage() {
 
   function validate(f: File): string | null {
     if (!ACCEPTED_TYPES.includes(f.type)) {
-      return `Unsupported file type "${f.type || "unknown"}". Accepted types: PDF, PNG, JPEG, TIFF, WEBP, BMP.`;
+      return "Unsupported file format. Please upload a PDF, PNG, JPG, JPEG, TIFF, BMP, or WEBP file.";
     }
     if (f.size > MAX_SIZE_MB * 1024 * 1024) {
-      return `File is larger than the ${MAX_SIZE_MB} MB maximum.`;
+      return "File too large. Maximum allowed size is 25 MB.";
     }
     return null;
   }
@@ -98,158 +98,175 @@ export default function AnalyzePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Analyze a Document</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Upload a scanned or digital document to run layout analysis, OCR, sensitive-element
-          detection, integrity verification and Braille output.
+    <div className="mx-auto max-w-4xl space-y-8">
+      {/* Header */}
+      <div className="border-b border-white/[0.08] pb-6">
+        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-amber-300">
+          Compute Ingest Stage
+        </span>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-white font-heading sm:text-3xl">
+          Document Intelligence Ingest
+        </h1>
+        <p className="mt-1 text-xs text-slate-400">
+          Upload official certificates, deeds, or administrative notices to run layout parsing,
+          Indic OCR, sensitive seal isolation, cryptographic hashing, and Braille synthesis.
         </p>
       </div>
 
-      {/* 1-Click Sample Selector */}
-      <Card className="border-saffron/30 bg-accent/40">
-        <CardContent className="p-4 sm:p-5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-accent-foreground">
-            <Sparkles className="h-4 w-4 text-saffron" />
-            <span>Try with a Demo Sample Document (1-Click)</span>
+      {/* 1-Click Instant Demo Benchmark Launcher */}
+      <DoubleBezelCard
+        className="ring-amber-500/20 bg-gradient-to-r from-amber-500/10 via-white/[0.02] to-transparent"
+        innerClassName="p-6"
+      >
+        <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white font-heading">
+                Instant Demo Benchmarks
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Execute without uploading your own file.
+              </p>
+            </div>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Test all platform features instantly without needing to upload your own file.
-          </p>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {SAMPLE_OPTIONS.map((opt) => (
-              <button
-                key={opt.type}
-                disabled={uploading}
-                onClick={() => handleSample(opt.type)}
-                className="flex flex-col items-start rounded-lg border bg-card p-3 text-left transition-all hover:border-saffron hover:shadow-sm disabled:opacity-50"
-              >
-                <span className="text-xs font-semibold text-foreground">{opt.label}</span>
-                <span className="mt-0.5 text-[10px] text-muted-foreground">{opt.desc}</span>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+          <Badge variant="demo" className="text-[9px]">
+            1-Click Run
+          </Badge>
+        </div>
 
-      {error ? <ErrorState error={error} title="Upload failed" onRetry={() => setError(null)} /> : null}
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {SAMPLE_OPTIONS.map((opt) => (
+            <button
+              key={opt.type}
+              disabled={uploading}
+              onClick={() => handleSample(opt.type)}
+              className="group flex flex-col items-start rounded-2xl border border-white/10 bg-black/40 p-3.5 text-left transition-all duration-300 hover:border-amber-500/40 hover:bg-[#0a0f1d] disabled:opacity-50"
+            >
+              <span className="text-xs font-semibold text-white group-hover:text-amber-300 transition-colors">
+                {opt.label}
+              </span>
+              <span className="mt-1 text-[10px] text-slate-400 leading-tight">
+                {opt.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+      </DoubleBezelCard>
+
+      {error ? (
+        <ErrorState error={error} title="Upload Diagnostic Alert" onRetry={() => setError(null)} />
+      ) : null}
 
       {documentId ? (
         <ProcessingView documentId={documentId} fileName={documentName} />
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Upload Custom Document</CardTitle>
-            <CardDescription>
-              Your original file is never overwritten. Analysis runs on a protected copy.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <input
-              ref={inputRef}
-              type="file"
-              accept={ACCEPTED_TYPES.join(",")}
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void handleFile(f);
-                e.target.value = "";
-              }}
-            />
-            <div
-              role="button"
-              tabIndex={0}
-              aria-label="Upload a document"
-              onClick={() => inputRef.current?.click()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  inputRef.current?.click();
-                }
-              }}
-              onDragOver={(e) => {
+        <DoubleBezelCard innerClassName="p-6 md:p-8 space-y-6">
+          <div className="border-b border-white/[0.08] pb-4">
+            <h2 className="text-lg font-bold text-white font-heading">
+              Secure Document Ingress
+            </h2>
+            <p className="text-xs text-slate-400">
+              Original document binary is safely isolated in non-public storage. All redaction and
+              verification operations occur on memory-bounded copies.
+            </p>
+          </div>
+
+          <input
+            ref={inputRef}
+            type="file"
+            accept={ACCEPTED_TYPES.join(",")}
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void handleFile(f);
+              e.target.value = "";
+            }}
+          />
+
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Upload a document"
+            onClick={() => inputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                setDragging(true);
-              }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={onDrop}
-              className={cn(
-                "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors",
-                dragging
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-muted/30 hover:border-primary/50 hover:bg-muted/50",
-              )}
-            >
-              {uploading ? (
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              ) : previewDataUrl ? (
-                <img
-                  src={previewDataUrl}
-                  alt="Document thumbnail preview"
-                  className="h-24 max-w-full rounded-md object-contain shadow-sm"
-                />
-              ) : (
-                <UploadCloud className="h-8 w-8 text-primary" />
-              )}
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  {uploading
-                    ? "Uploading & processing…"
-                    : "Drag & drop your document here, or click to browse"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  PDF · PNG · JPEG · TIFF · WEBP · BMP — up to {MAX_SIZE_MB} MB
+                inputRef.current?.click();
+              }
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            className={cn(
+              "group relative flex cursor-pointer flex-col items-center justify-center gap-4 rounded-3xl border-2 border-dashed p-10 text-center transition-all duration-300",
+              dragging
+                ? "border-amber-400 bg-amber-500/10 scale-[0.99]"
+                : "border-white/15 bg-black/40 hover:border-amber-500/50 hover:bg-black/60",
+            )}
+          >
+            {uploading ? (
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="h-10 w-10 animate-spin text-amber-400" />
+                <p className="font-mono text-xs text-amber-300">
+                  Ingesting bytes & initializing OpenCV / Tesseract workers...
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={uploading}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  inputRef.current?.click();
-                }}
-              >
-                Choose File
-              </Button>
-            </div>
-
-            {file && (
-              <div className="mt-4 flex items-center gap-3 rounded-lg border bg-muted/40 p-3">
-                {previewDataUrl ? (
-                  <img
-                    src={previewDataUrl}
-                    alt="File preview thumbnail"
-                    className="h-10 w-10 rounded border object-cover"
-                  />
-                ) : (
-                  <div className="rounded-lg bg-card p-2 text-muted-foreground">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
-                </div>
-                {file.type === "application/pdf" ? (
-                  <Badge variant="outline">PDF</Badge>
-                ) : (
-                  <Badge variant="outline">Image</Badge>
-                )}
+            ) : previewDataUrl ? (
+              <img
+                src={previewDataUrl}
+                alt="Document thumbnail preview"
+                className="h-32 max-w-full rounded-xl object-contain border border-white/20 shadow-lg"
+              />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-amber-400 group-hover:scale-105 transition-transform">
+                <UploadCloud className="h-8 w-8" strokeWidth={1.5} />
               </div>
             )}
 
-            <div className="mt-4 flex items-start gap-2 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-              <p>
-                In Demo Mode, analysis results are simulated until trained models are connected.
-                Results are for demonstration only and are clearly labelled as Demo Analysis.
-              </p>
+            {!uploading && (
+              <div className="space-y-1.5">
+                <p className="text-sm font-bold text-white font-heading">
+                  Drag & Drop Document Payload Here
+                </p>
+                <p className="text-xs text-slate-400">
+                  or <span className="font-semibold text-amber-400 underline underline-offset-4">browse local files</span>
+                </p>
+                <p className="pt-2 font-mono text-[10px] text-slate-400">
+                  PDF, PNG, JPG, JPEG, TIFF, BMP, WEBP · Max 25 MB · Up to 100 pages
+                </p>
+              </div>
+            )}
+          </div>
+
+          {file && (
+            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-amber-400">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-white">{file.name}</p>
+                <p className="font-mono text-[10px] text-slate-400">{formatBytes(file.size)}</p>
+              </div>
+              <Badge variant="outline" className="text-[10px]">
+                {file.type.split("/")[1]?.toUpperCase() || "PAYLOAD"}
+              </Badge>
             </div>
-          </CardContent>
-        </Card>
+          )}
+
+          <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4 text-xs text-slate-300">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+            <p className="text-[11px] leading-relaxed">
+              <strong className="text-emerald-300">Zero Raw Ingress Leakage:</strong> Ingestion
+              immediately computes SHA-256 binary hash sum. Original pixels are isolated from public routes.
+            </p>
+          </div>
+        </DoubleBezelCard>
       )}
     </div>
   );

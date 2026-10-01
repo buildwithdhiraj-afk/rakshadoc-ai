@@ -4,9 +4,8 @@ import type {
   BrailleOutput,
   Detection,
   Document,
-  Experiment,
+  DocumentInsights,
   HealthResponse,
-  ModelInfo,
   OCRResult,
   ProcessingJob,
   ProtectedCopy,
@@ -103,7 +102,6 @@ export const api = {
     request<{ token: string; user: User }>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
   login: (data: { email: string; password: string }) =>
     request<{ token: string; user: User }>("/auth/login", { method: "POST", body: JSON.stringify(data) }),
-  guest: () => request<{ token: string; user: User }>("/auth/guest", { method: "POST" }),
   me: () => request<User>("/auth/me"),
 
   // Documents
@@ -122,6 +120,7 @@ export const api = {
   getAnalysis: (id: string) => request<Document>(`/documents/${id}/analysis`),
   getOcr: (id: string) => request<OCRResult[]>(`/documents/${id}/ocr`),
   getDetections: (id: string) => request<Detection[]>(`/documents/${id}/detections`),
+  getInsights: (id: string) => request<DocumentInsights>(`/documents/${id}/insights`),
   previewUrl: (id: string, page = 1) => `${API_URL}/documents/${id}/preview?page=${page}`,
   protect: (
     id: string,
@@ -145,22 +144,35 @@ export const api = {
 
   // Admin
   adminMetrics: () => request<Record<string, unknown>>("/admin/metrics"),
-  adminExperiments: () => request<Experiment[]>("/admin/experiments"),
   adminAuditLogs: () => request<AuditEvent[]>("/admin/audit-logs"),
-  adminModels: () => request<ModelInfo[]>("/admin/models"),
 
   // Health
   health: () => request<HealthResponse>("/health"),
 };
 
-export function signedUrl(id: string, page = 1): string {
+/**
+ * `<img src>` and `<a href>` cannot send an `Authorization` header, so every
+ * asset URL built here carries the JWT as a `token` query parameter. The
+ * backend's `get_current_user_payload` accepts it as an alternative to the
+ * bearer header (see app/core/security.py). Without this, page images and
+ * protected copies return 401 and the viewer renders a broken image.
+ */
+function withToken(url: string): string {
   const token = getToken();
-  const base = `${API_URL}/documents/${id}/preview?page=${page}`;
-  return token ? `${base}&token=${encodeURIComponent(token)}` : base;
+  if (!token) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`;
 }
 
+export function signedUrl(id: string, page = 1): string {
+  return withToken(`${API_URL}/documents/${id}/preview?page=${page}`);
+}
+
+/** Whole protected document (multi-page PDF when the source has several pages). */
 export function protectedCopyUrl(id: string): string {
-  const token = getToken();
-  const base = `${API_URL}/documents/${id}/protected-copy`;
-  return token ? `${base}?download=1&token=${encodeURIComponent(token)}` : base;
+  return withToken(`${API_URL}/documents/${id}/protected-copy?download=1`);
+}
+
+/** One protected page, as a PNG for the viewer's Protected Copy tab. */
+export function protectedPreviewUrl(id: string, page = 1): string {
+  return withToken(`${API_URL}/documents/${id}/protected-copy?page=${page}`);
 }

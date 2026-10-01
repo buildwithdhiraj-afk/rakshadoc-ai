@@ -2,141 +2,205 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Accessibility,
-  ArrowDown,
   ArrowRight,
+  ArrowUpRight,
+  CheckCircle2,
+  Cpu,
+  FileCheck2,
   FileScan,
+  FileText,
   Fingerprint,
+  HardDrive,
+  Hash,
+  Languages,
+  Layers,
   Lock,
   ScanSearch,
+  ShieldCheck,
+  ShieldLock,
   Sparkles,
-  Upload,
+  UploadCloud,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { DoubleBezelCard } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "How It Works",
-  description: "The six-step RakshaDoc AI pipeline.",
+  title: "9-Step Intelligence Pipeline",
+  description:
+    "Discover how RakshaDoc AI processes, secures, verifies, and transforms multilingual Indian documents in 9 precise steps.",
 };
 
-const steps = [
+const pipelineSteps = [
   {
     num: "01",
-    tag: "UPLOAD",
-    title: "Upload Document",
-    desc: "Upload a PDF or image file (PNG, JPEG, TIFF, WEBP, BMP up to 25 MB). Your original file is stored safely in private storage.",
-    icon: Upload,
+    title: "MIME Ingest & Magic Byte Validation",
+    icon: UploadCloud,
+    tag: "Security Filter",
+    desc: "Every payload is verified by binary header inspection (PNG, JPEG, PDF) before entering memory. Files are assigned private UUID storage locations.",
   },
   {
     num: "02",
-    tag: "ENHANCE",
-    title: "Quality & Enhancement",
-    desc: "The system assesses quality score and applies image cleanup (deskew, binarization, noise reduction) if needed.",
-    icon: Sparkles,
+    title: "OpenCV Quality & Blur Diagnostic",
+    icon: ScanSearch,
+    tag: "Computer Vision",
+    desc: "Computes Laplacian variance, contrast distribution, and brightness scores. Documents falling below quality thresholds trigger enhancement warnings.",
   },
   {
     num: "03",
-    tag: "UNDERSTAND",
-    title: "Layout & Text Analysis",
-    desc: "Deep learning models detect titles, headings, paragraphs, tables, figures, lists, signatures, stamps, seals, logos and QR codes.",
-    icon: ScanSearch,
+    title: "CLAHE & Adaptive Preprocessing",
+    icon: Sparkles,
+    tag: "Enhancement",
+    desc: "Applies Contrast Limited Adaptive Histogram Equalization to restore low-contrast stamps, weathered ink, and mobile camera shadows.",
   },
   {
     num: "04",
-    tag: "PROTECT",
-    title: "Sensitive Element Protection",
-    desc: "Detected signatures and official stamps are marked. Choose permanent redaction, blur, pixelation or masking to generate a shareable copy.",
-    icon: Lock,
+    title: "Morphological Layout Segmentation",
+    icon: Layers,
+    tag: "Structure",
+    desc: "Identifies document bounding boxes, distinguishing header crests, official tables, seals, signature regions, and body paragraphs.",
   },
   {
     num: "05",
-    tag: "VERIFY",
-    title: "Integrity & Tamper Risk",
-    desc: "A SHA-256 cryptographic hash is generated to confirm file integrity. Suspicions are evaluated to assign LOW, MEDIUM or HIGH tamper risk.",
-    icon: Fingerprint,
+    title: "Indic Multilingual OCR Extraction",
+    icon: Languages,
+    tag: "Tesseract Engine",
+    desc: "Runs multi-script OCR on extracted layout blocks, capturing Devanagari, Marathi, Hindi, Tamil, and English with per-token confidence metrics.",
   },
   {
     num: "06",
-    tag: "ACCESS",
-    title: "Structured Text & Braille",
-    desc: "Extracted text is structured into paragraphs and translated into Braille Unicode (.brf / .txt) for screen readers and refreshable Braille displays.",
+    title: "Sensitive Authentication Seal Detection",
+    icon: Fingerprint,
+    tag: "Heuristic Engine",
+    desc: "Identifies sensitive authentication artifacts: registrar signatures, official departmental stamps, barcode matrices, and identity numbers.",
+  },
+  {
+    num: "07",
+    title: "Pillow Destructive Privacy Redaction",
+    icon: ShieldLock,
+    tag: "Privacy Layer",
+    desc: "Executes raster-level pixel destruction (blackout or Gaussian blur) over selected sensitive zones, preventing data extraction from exports.",
+  },
+  {
+    num: "08",
+    title: "SHA-256 Hash Ledgering & Proofs",
+    icon: Hash,
+    tag: "Integrity",
+    desc: "Generates cryptographic SHA-256 hashes of original and redacted documents, logging tamper-proof metadata into the audit ledger.",
+  },
+  {
+    num: "09",
+    title: "Bharati Braille Grade 1 Generation",
     icon: Accessibility,
+    tag: "Accessibility",
+    desc: "Converts extracted text into standard 6-dot Unicode Braille characters and formatted TXT files for refreshable Braille hardware.",
   },
 ];
 
 export default function HowItWorksPage() {
   return (
-    <>
+    <div className="relative min-h-screen bg-[#030712] text-slate-100 selection:bg-amber-500/30 selection:text-amber-200">
       <SiteHeader />
-      <main className="bg-background py-16 sm:py-24">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <Badge variant="secondary" className="mb-3">
-              Workflow
-            </Badge>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
-              Transparent Six-Step Pipeline
+
+      <main className="relative z-10 pt-36 pb-28 md:pt-44 md:pb-36">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="flex flex-col items-center text-center">
+            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+              Architecture & Execution
+            </span>
+            <h1 className="mt-6 text-4xl font-bold tracking-tight text-white font-heading sm:text-6xl">
+              The 9-Step Verification Pipeline
             </h1>
-            <p className="mt-4 text-lg text-muted-foreground">
-              From raw document upload to verified, protected and accessible output.
+            <p className="mt-4 max-w-2xl text-sm text-slate-400 sm:text-base leading-relaxed">
+              Step-by-step mathematical flow: from uploaded document bytes to cryptographically
+              fingerprinted, privacy-redacted, and accessible Braille outputs.
             </p>
           </div>
 
-          <div className="mt-16 flex flex-wrap items-center justify-center gap-2">
-            {["UPLOAD", "ENHANCE", "UNDERSTAND", "PROTECT", "VERIFY", "ACCESS"].map((s, i) => (
-              <div key={s} className="flex items-center gap-2">
-                <span className="rounded-lg border bg-card px-3 py-1.5 text-xs font-bold tracking-wide text-foreground shadow-sm">
-                  {s}
-                </span>
-                {i < 5 && <ArrowRight className="h-4 w-4 text-muted-foreground hidden sm:block" />}
-              </div>
-            ))}
-          </div>
+          {/* Timeline Process Cards */}
+          <div className="mt-20 relative">
+            {/* Center glowing line on desktop */}
+            <div className="hidden lg:block absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-gradient-to-b from-amber-500/40 via-white/10 to-transparent pointer-events-none" />
 
-          <div className="mt-16 space-y-6">
-            {steps.map((step, i) => (
-              <div key={step.num} className="relative">
-                <Card>
-                  <CardContent className="flex flex-col gap-6 p-6 sm:flex-row sm:items-start">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/5 text-primary">
-                      <step.icon className="h-6 w-6" />
+            <div className="space-y-12">
+              {pipelineSteps.map((step, idx) => {
+                const isEven = idx % 2 === 0;
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "flex flex-col lg:flex-row items-center gap-8",
+                      isEven ? "lg:flex-row-reverse" : "",
+                    )}
+                  >
+                    {/* Content Card */}
+                    <div className="w-full lg:w-1/2">
+                      <DoubleBezelCard
+                        className={cn("group transition-all duration-300 hover:ring-amber-500/30")}
+                        innerClassName="p-6 md:p-8"
+                      >
+                        <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono text-2xl font-bold text-amber-400">
+                              {step.num}
+                            </span>
+                            <span className="font-mono text-xs text-slate-400">
+                              STAGE {idx + 1}
+                            </span>
+                          </div>
+                          <Badge variant="outline" className="text-[10px]">
+                            {step.tag}
+                          </Badge>
+                        </div>
+
+                        <div className="mt-5 flex items-start gap-4">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
+                            <step.icon className="h-5 w-5" strokeWidth={1.5} />
+                          </div>
+                          <div>
+                            <h3 className="text-base font-bold text-white font-heading">
+                              {step.title}
+                            </h3>
+                            <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                              {step.desc}
+                            </p>
+                          </div>
+                        </div>
+                      </DoubleBezelCard>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="saffron">{step.tag}</Badge>
-                        <span className="font-mono text-sm font-bold text-muted-foreground">
-                          {step.num}
-                        </span>
-                      </div>
-                      <h2 className="mt-2 text-xl font-bold text-foreground">{step.title}</h2>
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                        {step.desc}
-                      </p>
+
+                    {/* Center Node Indicator */}
+                    <div className="hidden lg:flex shrink-0 items-center justify-center h-10 w-10 rounded-full border border-amber-500/40 bg-[#070b14] text-amber-300 font-mono text-xs font-bold shadow-[0_0_15px_rgba(245,158,11,0.3)] z-20">
+                      {step.num}
                     </div>
-                  </CardContent>
-                </Card>
-                {i < steps.length - 1 && (
-                  <div className="my-2 flex justify-center text-muted-foreground">
-                    <ArrowDown className="h-4 w-4" />
+
+                    {/* Empty Space for symmetrical timeline */}
+                    <div className="hidden lg:block w-1/2" />
                   </div>
-                )}
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
 
-          <div className="mt-16 text-center">
-            <Button asChild variant="saffron" size="lg">
-              <Link href="/dashboard/analyze">
-                <FileScan className="h-4 w-4" /> Try It Now
-              </Link>
-            </Button>
+          {/* Bottom CTA */}
+          <div className="mt-24 text-center">
+            <Link
+              href="/register"
+              className="group relative inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 p-1.5 pl-6 text-sm font-semibold text-slate-950 shadow-[0_0_30px_rgba(245,158,11,0.35)] transition-all duration-300 hover:shadow-[0_0_45px_rgba(245,158,11,0.6)] active:scale-98"
+            >
+              <span>Test The Pipeline Live</span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-950/20 text-slate-950 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+                <ArrowUpRight className="h-4 w-4" strokeWidth={2.5} />
+              </span>
+            </Link>
           </div>
         </div>
       </main>
+
       <SiteFooter />
-    </>
+    </div>
   );
 }

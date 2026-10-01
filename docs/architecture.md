@@ -10,7 +10,11 @@
                              │ REST API / Auth Headers
 ┌────────────────────────────▼────────────────────────────┐
 │                    FastAPI Backend                      │
-│   ├── JWT Auth & Role Access Control                   │
+│   ├── JWT Auth & Role Access Control (user/admin)      │
+│   ├── Services: processing, protection, integrity,     │
+│   │   braille, audit, preprocessing, demo_generator    │
+│   ├── ML layer (backend/ml): document_detection,       │
+│   │   ocr, sensitive_detection, tamper_detection       │
 │   ├── Image Processing & Protection (Pillow)           │
 │   ├── SHA-256 Integrity Verification                   │
 │   └── Braille Grade 1 Translator                       │

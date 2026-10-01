@@ -47,9 +47,6 @@ def test_auth_flow(client):
     assert r_me.status_code == 200
     assert r_me.json()["email"] == "unique@example.com"
 
-def test_guest_auth(client):
+def test_guest_endpoint_removed(client):
     r = client.post("/api/auth/guest")
-    assert r.status_code == 200
-    data = r.json()
-    assert data["user"]["role"] == "guest"
-    assert "token" in data
+    assert r.status_code in (404, 405, 422)

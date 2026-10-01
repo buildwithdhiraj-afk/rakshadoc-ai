@@ -1,0 +1,32 @@
+fastapi>=0.104.0
+uvicorn>=0.24.0
+sqlalchemy>=2.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+email-validator>=2.0.0
+bcrypt>=4.0.0
+PyJWT>=2.8.0
+python-multipart>=0.0.6
+opencv-python-headless>=4.8.0
+pillow>=10.0.0
+numpy>=1.24.0
+pymupdf>=1.23.0
+pytesseract>=0.3.10
+pytest>=7.4.0
+httpx>=0.25.0
+
+# pytesseract is a pure-Python wrapper with no bundled engine. It still requires
+# the Tesseract binary to be installed separately (Windows:
+# "C:\Program Files\Tesseract-OCR", verified with --list-langs). Without the
+# binary, ml/ocr.py degrades to pdf_text_layer/none rather than erroring, so
+# scanned images silently yield no text.
+#
+# The optional pretrained layout model is NOT listed here on purpose. It adds
+# roughly a gigabyte, and detection is complete without it: the PDF text layer
+# and the OpenCV pass are authoritative. To enable the Hugging Face
+# refinement in ml/hf_layout_detection.py:
+#
+#   pip install -r requirements-optional.txt
+#   set RAKSHADOC_ENABLE_HF_LAYOUT=1
+#
+# See requirements-optional.txt.

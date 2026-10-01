@@ -4,7 +4,7 @@ The system uses SQLAlchemy ORM compatible with SQLite for dev/test and PostgreSQ
 
 ## Key Tables
 
-- `users`: ID, email, hashed_password, full_name, role (`guest`, `user`, `admin`), created_at.
+- `users`: ID, email, hashed_password, full_name, role (`user`, `admin`), created_at.
 - `documents`: ID, owner_id, original_name, mime_type, size_bytes, page_count, quality_score, status, sha256_hash, tamper_risk, storage_path, created_at.
 - `detections`: ID, document_id, page, category, bbox (JSON `{x, y, w, h}` normalized 0..1), confidence, sensitivity, action.
 - `ocr_results`: ID, document_id, page, language, language_confidence, source, text, structured (JSON).

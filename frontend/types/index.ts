@@ -1,4 +1,4 @@
-export type Role = "guest" | "user" | "admin";
+export type Role = "user" | "admin";
 
 export interface User {
   id: string;
@@ -46,7 +46,12 @@ export type DetectionCategory =
   | "stamp"
   | "seal"
   | "logo"
-  | "qr_code";
+  | "qr_code"
+  | "person"
+  | "date"
+  | "address"
+  | "identity_number"
+  | "financial_info";
 
 export interface BBox {
   /** Normalized 0..1 coordinates relative to the full page */
@@ -76,9 +81,28 @@ export interface OCRResult {
   page: number;
   language: string;
   language_confidence: number;
-  source: "demo" | "real";
+  /** Where the text came from: `pdf_text_layer`, `tesseract` or `none`. */
+  source: "pdf_text_layer" | "tesseract" | "none" | string;
   text: string;
   structured: StructuredText;
+}
+
+export type EntityType = "PERSON" | "DATE" | "LOCATION" | "ID" | "EMAIL" | "PHONE";
+
+export interface ExtractedEntity {
+  type: EntityType;
+  value: string;
+  page?: number;
+}
+
+export interface DocumentInsights {
+  document_id: string;
+  /** Source of the text the entities were read from. */
+  text_source: "pdf_text_layer" | "tesseract" | "none" | string;
+  pages_with_text: number;
+  entities: ExtractedEntity[];
+  /** Detection categories actually present in the document. */
+  sections: string[];
 }
 
 export interface ProcessingStep {
@@ -126,7 +150,7 @@ export interface PublicVerification {
   notice: string;
 }
 
-export type ProtectionMethod = "redact" | "blur" | "pixelate" | "mask";
+export type ProtectionMethod = "redact" | "blur";
 
 export interface ProtectedCopy {
   id: string;
@@ -143,7 +167,8 @@ export interface BrailleOutput {
   braille_unicode: string;
   braille_bytes: number;
   extracted_text: string;
-  source: "demo" | "real";
+  /** Where the translated text came from: `pdf_text_layer`, `tesseract` or `none`. */
+  source: "pdf_text_layer" | "tesseract" | "none" | string;
 }
 
 export interface AuditEvent {
@@ -167,26 +192,6 @@ export interface AdminMetrics {
   model_available: boolean;
   demo_mode: boolean;
   [key: string]: string | number | boolean | null;
-}
-
-export interface Experiment {
-  id: string;
-  name: string;
-  short_name: string;
-  description: string;
-  status: "evaluated" | "not_evaluated";
-  metrics: Record<string, number | string | null>;
-  evaluated_at: string | null;
-}
-
-export interface ModelInfo {
-  name: string;
-  version: string;
-  available: boolean;
-  backend: string;
-  loaded: boolean;
-  input: string;
-  notes: string;
 }
 
 export interface HealthResponse {

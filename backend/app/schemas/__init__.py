@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, EmailStr, Field
 
 class UserRegister(BaseModel):
@@ -28,6 +28,18 @@ class DocumentAnalysis(BaseModel):
     protected_copy: str = "Available"
     braille: str = "Available"
 
+class EntityOut(BaseModel):
+    type: str
+    value: str
+    page: Optional[int] = None
+
+class DocumentInsights(BaseModel):
+    document_id: str
+    text_source: str
+    pages_with_text: int
+    entities: List[EntityOut]
+    sections: List[str]
+
 class DocumentOut(BaseModel):
     id: str
     original_name: str
@@ -40,7 +52,8 @@ class DocumentOut(BaseModel):
     tamper_risk: Optional[str] = None
     analysis: Optional[DocumentAnalysis] = None
     created_at: str
-    demo: bool = True
+    # True only for synthetically generated samples, never for real uploads.
+    demo: bool = False
 
 class BBox(BaseModel):
     x: float
@@ -105,7 +118,7 @@ class PublicVerificationOut(BaseModel):
 
 class ProtectRequest(BaseModel):
     level: str = "high"
-    method: str = "redact"
+    method: Literal["redact", "blur"] = "redact"
     elements: List[str]
 
 class ProtectedCopyOut(BaseModel):

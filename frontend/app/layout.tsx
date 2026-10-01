@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono, Inter, Sora } from "next/font/google";
+import { Geist_Mono, Plus_Jakarta_Sans, Sora } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: "--font-plus-jakarta-sans",
   subsets: ["latin"],
   display: "swap",
 });
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0d2b52",
+  themeColor: "#030712",
   width: "device-width",
   initialScale: 1,
 };
@@ -52,10 +52,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${sora.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${plusJakarta.variable} ${sora.variable} ${geistMono.variable} dark h-full antialiased selection:bg-amber-500/30 selection:text-amber-200`}
     >
-      <body className="flex min-h-full flex-col bg-background text-foreground">
-        {children}
+      <body className="flex min-h-full flex-col bg-[#030712] text-slate-100 antialiased">
+        <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(245,158,11,0.08),rgba(255,255,255,0))]"></div>
+        <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_50%_40%_at_80%_70%,rgba(56,189,248,0.05),rgba(255,255,255,0))]"></div>
+        <div className="relative z-10 flex min-h-full flex-col">
+          {children}
+        </div>
       </body>
     </html>
   );

@@ -1,4 +1,3 @@
-import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -23,7 +22,7 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    token = create_access_token({"sub": user.id, "role": user.role, "guest": False})
+    token = create_access_token({"sub": user.id, "role": user.role})
     return TokenResponse(
         token=token,
         user=UserOut(id=user.id, email=user.email, full_name=user.full_name, role=user.role)
@@ -35,27 +34,15 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    token = create_access_token({"sub": user.id, "role": user.role, "guest": False})
+    token = create_access_token({"sub": user.id, "role": user.role})
     return TokenResponse(
         token=token,
         user=UserOut(id=user.id, email=user.email, full_name=user.full_name, role=user.role)
     )
 
-@router.post("/guest", response_model=TokenResponse)
-def guest_login():
-    guest_id = str(uuid.uuid4())
-    token = create_access_token({"sub": guest_id, "role": "guest", "guest": True})
-    return TokenResponse(
-        token=token,
-        user=UserOut(id=guest_id, email=f"guest_{guest_id[:6]}@rakshadoc.local", full_name="Guest User", role="guest")
-    )
-
 @router.get("/me", response_model=UserOut)
 def get_me(payload: dict = Depends(get_current_user_payload), db: Session = Depends(get_db)):
     user_id = payload.get("sub")
-    if payload.get("guest"):
-        return UserOut(id=user_id, email=f"guest_{user_id[:6]}@rakshadoc.local", full_name="Guest User", role="guest")
-
     user = db.query(User).filter_by(id=user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

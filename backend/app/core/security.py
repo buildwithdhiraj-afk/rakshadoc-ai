@@ -7,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
+from app.models import User
 
 security = HTTPBearer(auto_error=False)
 
@@ -54,7 +55,8 @@ def get_current_user_payload(
     return decode_token(raw_token)
 
 def require_admin(payload: dict = Depends(get_current_user_payload)):
-    if payload.get("role") != "admin":
+    role = payload.get("role")
+    if role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required",
