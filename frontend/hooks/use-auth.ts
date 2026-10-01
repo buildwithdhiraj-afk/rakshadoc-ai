@@ -36,6 +36,8 @@ export function useAuth() {
   useEffect(() => {
     const stored = getStoredUser();
     if (stored) {
+      // Hydrate cached user immediately; auth round-trips below.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUser(stored);
     }
     if (!getToken()) {

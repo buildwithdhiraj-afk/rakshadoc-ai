@@ -5,9 +5,8 @@ JSON responses unless stated. All authenticated endpoints require `Authorization
 
 ## Roles
 
-- `guest` — limited processing (demo, in-memory, no history).
 - `user` — full document pipeline + history.
-- `admin` / `researcher` — metrics, experiments, audit logs, system health, model versions.
+- `admin` — everything a user can do, plus metrics and audit logs.
 
 ## Objects
 
@@ -68,9 +67,9 @@ JSON responses unless stated. All authenticated endpoints require `Authorization
 {
   "id": "uuid", "document_id": "uuid", "status": "queued|running|completed|failed",
   "progress": 0.58, "current_step": "Detecting document layout...",
-  "steps": ["Document uploaded", "Quality analysis", "Image enhancement", "Layout detection",
-            "OCR", "Sensitive element detection", "Protection", "Integrity verification",
-            "Braille generation"],
+  "steps": ["Document Uploaded", "Quality Analysis", "Image Enhancement", "Layout Detection",
+            "OCR Extraction", "Sensitive Element Detection", "Protection Processing",
+            "Integrity Verification", "Braille Generation"],
   "started_at": "ISO8601", "completed_at": "ISO8601|null", "error": "string|null"
 }
 ```
@@ -93,7 +92,7 @@ JSON responses unless stated. All authenticated endpoints require `Authorization
 ```json
 {
   "id": "uuid", "document_id": "uuid", "protection_level": "high",
-  "method": "redact|blur|pixelate|mask",
+  "method": "redact|blur",
   "elements": ["signature", "stamp", "qr_code"],
   "created_at": "ISO8601"
 }
@@ -122,18 +121,15 @@ JSON responses unless stated. All authenticated endpoints require `Authorization
 |---|---|---|---|---|
 | POST | `/auth/register` | `{email, password, full_name}` | – | `{token, user}` |
 | POST | `/auth/login` | `{email, password}` | – | `{token, user}` |
-| POST | `/auth/guest` | `{name?: string}` | – | `{token, user}` (role `guest`) |
 | GET | `/auth/me` | – | Bearer | `User` |
 
 Validation: email format, password min 8 chars. Errors: 400 invalid payload, 401 wrong creds, 409 email exists.
 
-Guests get a signed ephemeral token; guest documents are owned by a random guest id and may be cleaned up by retention.
-
 ### Documents
 | Method | Path | Body | Auth | Returns |
 |---|---|---|---|---|
-| POST | `/documents/upload` | multipart `file` | Bearer/guest | `Document` (201) |
-| GET | `/documents` | – | Bearer/guest | `Document[]` |
+| POST | `/documents/upload` | multipart `file` | Bearer | `Document` (201) |
+| GET | `/documents` | – | Bearer | `Document[]` |
 | GET | `/documents/{id}` | – | owner | `Document` |
 | POST | `/documents/{id}/process` | – | owner | `ProcessingJob` (202) |
 | GET | `/documents/{id}/processing` | – | owner | `ProcessingJob` |
@@ -155,13 +151,11 @@ Upload validation: extension + MIME allowlist, `MAX_UPLOAD_SIZE_MB`, `MAX_PAGES`
 |---|---|---|
 | GET | `/verify/{verification_id}` | safe public metadata: `{verification_id, document_id_masked, integrity_status, tamper_risk, protected_copy_available, braille_available, created_at, version, notice}` |
 
-### Admin / Research (admin/researcher role only)
+### Admin (admin role only)
 | Method | Path | Returns |
 |---|---|---|
-| GET | `/admin/metrics` | system + model metrics (`not_evaluated` where unmeasured) |
-| GET | `/admin/experiments` | experiment list with status + metrics |
+| GET | `/admin/metrics` | system metrics (`not_evaluated` where unmeasured) |
 | GET | `/admin/audit-logs` | recent `AuditEvent[]` |
-| GET | `/admin/models` | model versions / load state |
 
 ### Health
 | Method | Path | Returns |

@@ -1,4 +1,4 @@
-from app.services.braille_service import translate_to_braille
+from app.services.braille import translate_to_braille
 
 def test_braille_translation_latin():
     result = translate_to_braille("abc", "English")

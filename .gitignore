@@ -20,13 +20,17 @@ build/
 *.tsbuildinfo
 next-env.d.ts
 
-# ML artifacts
-ml/models/
-models/**/*.pt
-models/**/*.onnx
-models/**/*.pth
+# ML artifacts (if model weights are added later)
+*.pt
+*.onnx
+*.pth
 *.joblib
 *.pkl
+
+# Tesseract traineddata — ~7 MB of binaries. Run `python scripts/fetch_tessdata.py`
+# once after cloning. The system Program Files copy is not writable without admin
+# rights, so the backend keeps its own at backend/tessdata.
+backend/tessdata/
 
 # Uploaded documents & databases — never commit documents or databases to git
 data/uploads/*

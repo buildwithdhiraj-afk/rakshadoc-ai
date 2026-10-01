@@ -14,6 +14,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{os.path.join(test_dir, 'test.db')}"
 os.environ["UPLOAD_DIR"] = os.path.join(test_dir, "uploads")
 os.environ["STORAGE_DIR"] = os.path.join(test_dir, "storage")
 os.environ["ENVIRONMENT"] = "testing"
+os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["DEMO_MODE"] = "true"
 
 from app.main import app
@@ -44,11 +45,6 @@ def auth_tokens(client):
         })
     user_token = r_user.json()["token"]
 
-    # Guest token
-    r_guest = client.post("/api/auth/guest")
-    guest_token = r_guest.json()["token"]
-
     return {
         "user": user_token,
-        "guest": guest_token,
     }

@@ -1,0 +1,20 @@
+# Optional pretrained layout model for ml/hf_layout_detection.py.
+#
+# NOT required. Detection runs completely without this file: the PDF text layer
+# and the OpenCV pass are authoritative, and tests pass on the base install.
+# These packages are only needed to turn on the Hugging Face refinement, which
+# is itself off by default and strictly additive (it can only add structure the
+# rules missed, never alter a text-layer detection).
+#
+#   pip install -r requirements-optional.txt
+#   set RAKSHADOC_ENABLE_HF_LAYOUT=1     (PowerShell: $env:RAKSHADOC_ENABLE_HF_LAYOUT=1)
+#
+# Model: Aryn/deformable-detr-DocLayNet, fetched from the Hugging Face Hub on
+# first use (~165 MB) and cached. No API token is needed.
+#
+# Roughly 1 GB installed, CPU-only. Verified on torch 2.8.0+cpu.
+
+torch>=2.2.0
+transformers>=4.40.0
+huggingface_hub>=0.23.0
+timm>=0.9.0

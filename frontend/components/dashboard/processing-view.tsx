@@ -2,16 +2,27 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, RotateCcw, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, RotateCcw, ShieldCheck, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/error-state";
 import { api, ApiClientError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { ProcessingJob } from "@/types";
+
+const DISPLAY_STEPS = [
+  "Document uploaded",
+  "Quality analysis",
+  "Image enhancement",
+  "Layout detection",
+  "OCR text extraction",
+  "Sensitive element detection",
+  "Protection preparation",
+  "Integrity verification",
+  "Accessibility/Braille preparation",
+];
 
 export function ProcessingView({
   documentId,
@@ -90,25 +101,13 @@ export function ProcessingView({
     }
   }
 
-  const steps = job?.steps ?? [
-    "Document uploaded",
-    "Quality analysis",
-    "Image enhancement",
-    "Layout detection",
-    "OCR",
-    "Sensitive element detection",
-    "Protection",
-    "Integrity verification",
-    "Braille generation",
-  ];
-
-  const completedSet = new Set(job?.completed_steps ?? []);
+  const completedCount = job?.completed_steps?.length ?? 0;
   const done = job?.status === "completed";
 
-  const stepState = (step: string) => {
-    if (done || completedSet.has(step)) return "done";
-    if (job?.status === "failed") return "pending";
-    if (job?.current_step === step) return "running";
+  const getStepStatus = (index: number) => {
+    if (done || index < completedCount) return "done";
+    if (job?.status === "failed") return "failed";
+    if (index === completedCount) return "running";
     return "pending";
   };
 
@@ -127,90 +126,85 @@ export function ProcessingView({
   }
 
   const failedMessage = job?.status === "failed" ? job.error ?? "Processing failed." : null;
+  const rawProgress = job?.progress ?? (completedCount / DISPLAY_STEPS.length);
+  const progressPct = Math.round(Math.min(100, Math.max(5, rawProgress * 100)));
 
   return (
-    <Card>
+    <Card className="border-primary/20 shadow-md">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          Processing document
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            Document Analysis in Progress
+          </CardTitle>
           {fileName && (
-            <Badge variant="outline" className="max-w-xs truncate font-normal">
+            <Badge variant="outline" className="max-w-xs truncate font-medium">
               {fileName}
             </Badge>
           )}
-        </CardTitle>
+        </div>
         <CardDescription>
-          Running the RakshaDoc AI pipeline — this may take a few moments.
+          Running 9-step RakshaDoc AI intelligence & security analysis pipeline.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {job ? (
-          <>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 font-medium text-foreground">
-                  {done ? (
-                    <Check className="h-4 w-4 text-success" />
-                  ) : job.status === "failed" ? (
-                    <XCircle className="h-4 w-4 text-destructive" />
-                  ) : (
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  )}
-                  {done
-                    ? "Complete"
-                    : job.status === "failed"
-                      ? "Failed"
-                      : job.current_step ?? "Starting…"}
-                </span>
-                <span className="tabular-nums text-muted-foreground">
-                  {Math.round((job.progress ?? 0) * 100)}%
-                </span>
-              </div>
-              <Progress value={Math.round((job.progress ?? 0) * 100)} />
-            </div>
-
-            <ol className="grid gap-2">
-              {steps.map((step) => {
-                const state = stepState(step);
-                return (
-                  <li
-                    key={step}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm",
-                      state === "running" && "border-primary/40 bg-primary/5 font-medium text-foreground",
-                      state === "done" && "border-border bg-card",
-                      state === "pending" && "border-border bg-muted/30 text-muted-foreground",
-                    )}
-                  >
-                    {state === "done" ? (
-                      <Check className="h-4 w-4 shrink-0 text-success" />
-                    ) : state === "running" ? (
-                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
-                    ) : (
-                      <span className="h-4 w-4 shrink-0 rounded-full border border-muted-foreground/40" />
-                    )}
-                    <span className="flex-1">{step}</span>
-                    {state === "running" && <Badge variant="secondary">Running</Badge>}
-                    {state === "done" && <Badge variant="success">Done</Badge>}
-                  </li>
-                );
-              })}
-            </ol>
-          </>
-        ) : (
-          <div className="space-y-4">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <div className="space-y-2">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="flex items-center gap-2 font-medium text-foreground">
+              {done ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              ) : job?.status === "failed" ? (
+                <XCircle className="h-4 w-4 text-destructive" />
+              ) : (
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              )}
+              {done
+                ? "Document Analysis Complete"
+                : job?.status === "failed"
+                  ? "Pipeline Execution Failed"
+                  : DISPLAY_STEPS[Math.min(completedCount, DISPLAY_STEPS.length - 1)]}
+            </span>
+            <span className="tabular-nums font-semibold text-primary">
+              {progressPct}%
+            </span>
           </div>
-        )}
+          <Progress value={progressPct} className="h-2" />
+        </div>
+
+        <ol className="grid gap-2">
+          {DISPLAY_STEPS.map((stepName, index) => {
+            const status = getStepStatus(index);
+            return (
+              <li
+                key={stepName}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-sm transition-all",
+                  status === "running" && "border-primary/50 bg-primary/5 font-semibold text-foreground shadow-sm",
+                  status === "done" && "border-emerald-200 bg-emerald-50/50 text-foreground dark:border-emerald-950 dark:bg-emerald-950/20",
+                  status === "pending" && "border-border bg-muted/20 text-muted-foreground",
+                  status === "failed" && "border-destructive/40 bg-destructive/5 text-destructive",
+                )}
+              >
+                {status === "done" ? (
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                ) : status === "running" ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] text-muted-foreground">
+                    {index + 1}
+                  </span>
+                )}
+                <span className="flex-1">{stepName}</span>
+                {status === "running" && <Badge variant="secondary" className="animate-pulse">Processing</Badge>}
+                {status === "done" && <Badge variant="success">Completed</Badge>}
+                {status === "pending" && <span className="text-xs text-muted-foreground">Pending</span>}
+              </li>
+            );
+          })}
+        </ol>
 
         {job?.status === "failed" && (
-          <div className="space-y-3">
+          <div className="space-y-3 pt-2">
             <ErrorState error={new Error(failedMessage ?? "Processing failed.")} />
             <Button onClick={handleTryAgain} disabled={restarting}>
               <RotateCcw className="h-4 w-4" />
@@ -222,3 +216,4 @@ export function ProcessingView({
     </Card>
   );
 }
+

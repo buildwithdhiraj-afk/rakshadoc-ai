@@ -57,13 +57,3 @@ def generate_synthetic_page(doc_id: str, page_num: int, doc_name: str) -> str:
     file_path = os.path.join(out_folder, f"page_{page_num}.png")
     img.save(file_path, "PNG")
     return file_path
-
-def generate_detections_for_page(doc_id: str, page_num: int) -> list:
-    return [
-        {"category": "title", "bbox": {"x": 0.08, "y": 0.05, "w": 0.84, "h": 0.07}, "confidence": 0.98, "sensitivity": "NONE", "action": "NONE"},
-        {"category": "paragraph", "bbox": {"x": 0.08, "y": 0.16, "w": 0.84, "h": 0.24}, "confidence": 0.95, "sensitivity": "NONE", "action": "NONE"},
-        {"category": "table", "bbox": {"x": 0.08, "y": 0.43, "w": 0.84, "h": 0.17}, "confidence": 0.93, "sensitivity": "NONE", "action": "NONE"},
-        {"category": "signature", "bbox": {"x": 0.08, "y": 0.68, "w": 0.26, "h": 0.10}, "confidence": 0.96, "sensitivity": "HIGH", "action": "PROTECTED"},
-        {"category": "stamp", "bbox": {"x": 0.56, "y": 0.67, "w": 0.18, "h": 0.14}, "confidence": 0.91, "sensitivity": "HIGH", "action": "PROTECTED"},
-        {"category": "qr_code", "bbox": {"x": 0.78, "y": 0.68, "w": 0.13, "h": 0.10}, "confidence": 0.99, "sensitivity": "MEDIUM", "action": "PROTECTED"},
-    ]

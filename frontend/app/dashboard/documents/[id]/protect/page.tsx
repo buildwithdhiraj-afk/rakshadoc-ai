@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorState } from "@/components/error-state";
 import { AIDisclaimer } from "@/components/ai-disclaimer";
-import { api, protectedCopyUrl, signedUrl } from "@/lib/api";
+import { api, protectedCopyUrl, protectedPreviewUrl, signedUrl } from "@/lib/api";
 import type { ProtectedCopy, ProtectionMethod } from "@/types";
 
 const levels = [
@@ -24,8 +24,6 @@ const levels = [
 const methods: { value: ProtectionMethod; title: string; desc: string }[] = [
   { value: "redact", title: "Permanent Redaction", desc: "Removes the underlying sensitive pixels." },
   { value: "blur", title: "Blur", desc: "Softens the region so details are unreadable." },
-  { value: "pixelate", title: "Pixelation", desc: "Coarse pixel blocks hide the content." },
-  { value: "mask", title: "Mask", desc: "Covers the region with a solid mask." },
 ];
 
 const elements = [
@@ -45,6 +43,8 @@ function ProtectContent() {
   const docId = id ?? searchParams.get("doc");
 
   const [docName, setDocName] = useState("");
+  const [pageCount, setPageCount] = useState(1);
+  const [previewPage, setPreviewPage] = useState(1);
   const [loadingDoc, setLoadingDoc] = useState(true);
   const [level, setLevel] = useState<"standard" | "high">("high");
   const [method, setMethod] = useState<ProtectionMethod>("redact");
@@ -57,7 +57,10 @@ function ProtectContent() {
     if (!docId) return;
     api
       .getDocument(docId)
-      .then((d) => setDocName(d.original_name))
+      .then((d) => {
+        setDocName(d.original_name);
+        setPageCount(Math.max(1, d.page_count || 1));
+      })
       .catch((err) => setError(err))
       .finally(() => setLoadingDoc(false));
   }, [docId]);
@@ -224,13 +227,7 @@ function ProtectContent() {
               <Badge variant="success">Protected Copy Ready</Badge>
               <Badge variant="outline">{result.protection_level === "high" ? "High" : "Standard"} level</Badge>
               <Badge variant="outline">
-                {result.method === "redact"
-                  ? "Permanent Redaction"
-                  : result.method === "blur"
-                    ? "Blur"
-                    : result.method === "pixelate"
-                      ? "Pixelation"
-                      : "Mask"}
+                {result.method === "redact" ? "Permanent Redaction" : "Blur"}
               </Badge>
             </div>
             <Button asChild variant="saffron">
@@ -240,6 +237,21 @@ function ProtectContent() {
             </Button>
           </div>
 
+          {pageCount > 1 && (
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Preview page">
+              <span className="text-xs text-muted-foreground">Compare page</span>
+              {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
+                <Button
+                  key={p}
+                  size="sm"
+                  variant={previewPage === p ? "default" : "outline"}
+                  onClick={() => setPreviewPage(p)}
+                >
+                  {p}
+                </Button>
+              ))}
+            </div>
+          )}
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
@@ -252,7 +264,11 @@ function ProtectContent() {
               </CardHeader>
               <CardContent>
                 <div className="overflow-hidden rounded-lg border bg-muted/40">
-                  <img src={signedUrl(docId, 1)} alt="Secure original document" className="block w-full" />
+                  <img
+                    src={signedUrl(docId, previewPage)}
+                    alt={`Secure original document, page ${previewPage}`}
+                    className="block w-full"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -269,8 +285,8 @@ function ProtectContent() {
               <CardContent>
                 <div className="overflow-hidden rounded-lg border bg-muted/40">
                   <img
-                    src={protectedCopyUrl(docId)}
-                    alt="Protected copy of the document"
+                    src={protectedPreviewUrl(docId, previewPage)}
+                    alt={`Protected copy, page ${previewPage} of ${pageCount}`}
                     className="block w-full"
                   />
                 </div>
